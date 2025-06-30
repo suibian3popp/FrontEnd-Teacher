@@ -21,7 +21,7 @@
       </el-col>
     </el-row>
 
-    <!-- 3. 近期课程 & 待办事项 -->
+    <!-- 3. 近期课程 & 任务中心 -->
     <el-row :gutter="20" class="list-cards">
       <el-col :span="12">
         <el-card>
@@ -40,12 +40,12 @@
         <el-card>
           <template #header>
             <div class="card-header">
-              <span>待办事项</span>
-              <el-button type="primary" link @click="goTo('/todos')">处理全部</el-button>
+              <span>任务中心</span>
+              <el-button type="primary" link @click="goTo('/task')">查看全部</el-button>
             </div>
           </template>
           <ul class="item-list">
-            <li v-for="todo in todos" :key="todo.id">{{ todo.title }}</li>
+            <li v-for="task in tasks" :key="task.id">{{ task.title }}</li>
           </ul>
         </el-card>
       </el-col>
@@ -87,7 +87,7 @@ const currentDate = computed(() => new Date().toLocaleDateString('zh-CN', { year
 const stats = ref([
   { title: '课程数量', value: 8, icon: Collection },
   { title: '学生数量', value: 152, icon: Avatar },
-  { title: '待办数量', value: 6, icon: Tickets },
+  { title: '任务数量', value: 6, icon: Tickets },
   { title: '个人资源', value: 24, icon: Files },
 ]);
 
@@ -98,7 +98,7 @@ const recentCourses = ref([
   { id: 3, name: '《操作系统》 - 第四章 存储管理' },
 ]);
 
-const todos = ref([
+const tasks = ref([
   { id: 1, title: '批改《软件工程》期中测试卷' },
   { id: 2, title: '审核"计算机2101班"的课程项目申请' },
   { id: 3, title: '上传《计算机网络》第六章课件' },

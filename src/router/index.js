@@ -29,6 +29,14 @@ const routes = [
         path: 'analytics',
         component: () => import('../components/Analytics.vue')
       },
+      {
+        path: 'task/assignment',
+        component: () => import('../components/TaskAssignment.vue')
+      },
+      {
+        path: 'task/exam',
+        component: () => import('../components/TaskExam.vue')
+      },
       // 下面是示例，实际可根据你的页面继续添加
       // {
       //   path: 'course',

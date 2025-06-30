@@ -77,7 +77,7 @@
       "data": {
         "courseCount": 8,
         "studentCount": 152,
-        "todoCount": 6,
+        "taskCount": 6,
         "resourceCount": 24
       }
     }
@@ -104,7 +104,7 @@
 
 #### 2.3 获取待办事项列表
 
--   **Endpoint**: `/api/dashboard/todos`
+-   **Endpoint**: `/api/dashboard/tasks`
 -   **Method**: `GET`
 -   **Query Params**: `limit=3`
 -   **Description**: 获取最紧急的几条待办事项。

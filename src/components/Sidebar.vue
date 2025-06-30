@@ -44,15 +44,15 @@
           <el-menu-item index="/resource/public">公共资源库</el-menu-item>
         </el-sub-menu>
 
-        <!-- 待办事项 -->
-        <el-sub-menu index="todos">
+        <!-- 任务中心 -->
+        <el-sub-menu index="task">
           <template #title>
             <el-icon><List /></el-icon>
-            <span>待办事项</span>
+            <span>任务中心</span>
           </template>
-          <el-menu-item index="/todos/assignment">作业</el-menu-item>
-          <el-menu-item index="/todos/exam">考试</el-menu-item>
-          <el-menu-item index="/todos/approval">审批</el-menu-item>
+          <el-menu-item index="/task/assignment">作业</el-menu-item>
+          <el-menu-item index="/task/exam">考试</el-menu-item>
+          <el-menu-item index="/task/approval">审批</el-menu-item>
         </el-sub-menu>
 
       </el-menu>
