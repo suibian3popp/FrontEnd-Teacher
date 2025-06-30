@@ -25,6 +25,10 @@ const routes = [
         path: 'dashboard',
         component: Dashboard
       },
+      {
+        path: 'analytics',
+        component: () => import('../components/Analytics.vue')
+      },
       // 下面是示例，实际可根据你的页面继续添加
       // {
       //   path: 'course',

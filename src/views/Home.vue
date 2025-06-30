@@ -15,7 +15,7 @@
         </div>
       </el-header>
       <el-main style="background: #f5f6fa;">
-        <Dashboard />
+        <router-view />
       </el-main>
     </el-container>
   </el-container>
@@ -24,7 +24,6 @@
 <script setup>
 import { ref } from 'vue'
 import Sidebar from '../components/Sidebar.vue'
-import Dashboard from '../components/Dashboard.vue'
 import { Message, User } from '@element-plus/icons-vue'
 
 // 模拟登录状态 (你可以改为 true 来查看登录后的效果)
