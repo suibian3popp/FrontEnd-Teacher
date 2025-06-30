@@ -3,6 +3,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 // 组件懒加载
 const Home = () => import('../views/Home.vue')
 const Dashboard = () => import('../components/Dashboard.vue')
+const CourseManagement = () => import('../views/CourseManagement.vue')
 // 你可以根据实际情况添加其他页面组件
 // const Course = () => import('../views/Course.vue')
 // const Assignment = () => import('../views/Assignment.vue')
@@ -24,6 +25,10 @@ const routes = [
       {
         path: 'dashboard',
         component: Dashboard
+      },
+      {
+        path: 'course',
+        component: CourseManagement
       },
       {
         path: 'analytics',

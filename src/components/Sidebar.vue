@@ -14,7 +14,7 @@
         </el-menu-item>
 
         <!-- 课程管理 -->
-        <el-menu-item index="/course-management">
+        <el-menu-item index="/course">
           <el-icon><Collection /></el-icon>
           <span>课程管理</span>
         </el-menu-item>
