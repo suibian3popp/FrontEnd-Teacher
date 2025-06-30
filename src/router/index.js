@@ -37,6 +37,11 @@ const routes = [
         path: 'task/exam',
         component: () => import('../components/TaskExam.vue')
       },
+      {
+        path: 'assignment/:id',
+        name: 'AssignmentDetail',
+        component: () => import('../views/AssignmentDetail.vue')
+      },
       // 下面是示例，实际可根据你的页面继续添加
       // {
       //   path: 'course',

@@ -39,7 +39,13 @@
         </div>
       </template>
       <el-table :data="assignmentsToGrade" stripe>
-        <el-table-column prop="name" label="作业名称" />
+        <el-table-column prop="name" label="作业名称">
+          <template #default="{ row }">
+            <router-link :to="{ name: 'AssignmentDetail', params: { id: row.id } }" class="assignment-link">
+              {{ row.name }}
+            </router-link>
+          </template>
+        </el-table-column>
         <el-table-column prop="course" label="所属课程" />
         <el-table-column prop="class" label="班级" />
         <el-table-column prop="dueDate" label="截止日期" />
