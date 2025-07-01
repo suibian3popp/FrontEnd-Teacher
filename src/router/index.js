@@ -47,6 +47,12 @@ const routes = [
         name: 'AssignmentDetail',
         component: () => import('../views/AssignmentDetail.vue')
       },
+      // 添加一个临时的资源路由，指向另一个组件，避免404错误
+      {
+        path: 'resource',
+        component: Dashboard // 临时使用Dashboard作为资源页面
+      },
+     
       // 下面是示例，实际可根据你的页面继续添加
       // {
       //   path: 'course',

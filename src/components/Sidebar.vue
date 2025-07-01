@@ -35,14 +35,10 @@
         </el-menu-item>
 
         <!-- 资源库 -->
-        <el-sub-menu index="resource">
-          <template #title>
-            <el-icon><Files /></el-icon>
-            <span>资源库</span>
-          </template>
-          <el-menu-item index="/resource/personal">个人资源库</el-menu-item>
-          <el-menu-item index="/resource/public">公共资源库</el-menu-item>
-        </el-sub-menu>
+        <el-menu-item index="resource">
+          <el-icon><Files /></el-icon>
+          <span>资源库</span>
+        </el-menu-item>
 
         <!-- 任务中心 -->
         <el-sub-menu index="task">
