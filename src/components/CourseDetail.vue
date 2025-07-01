@@ -1,96 +1,151 @@
 <template>
-  <el-dialog
-    :model-value="show"
-    @update:model-value="$emit('update:show', $event)"
-    :title="course.name || '课程详情'"
-    width="85%"
-    top="5vh"
-    class="course-detail-dialog"
-  >
-    <el-container style="height: 75vh;">
-      <!-- Left Chapter Navigation -->
-      <el-aside width="280px" class="chapter-aside">
-        <div class="chapter-header">
-          <el-button type="primary" @click="showNewChapterModal = true" style="width: 100%;">
-            <el-icon><Plus /></el-icon>添加章节
+  <el-container style="height: 75vh;">
+    <!-- 左侧章节导航 -->
+    <el-aside width="260px" class="chapter-aside">
+      <div class="chapter-header">
+        <el-button type="primary" @click="handleAddChapter()" style="width: 100%;">
+          <el-icon><Plus /></el-icon>添加章节
+        </el-button>
+      </div>
+      
+      <!-- 使用菜单代替树形组件 -->
+      <el-menu 
+        :default-active="currentChapter?.chapter_id?.toString()" 
+        class="chapter-menu"
+        @select="handleMenuSelect"
+      >
+        <el-menu-item 
+          v-for="chapter in sortedChapters" 
+          :key="chapter.chapter_id"
+          :index="chapter.chapter_id.toString()"
+        >
+          <div class="chapter-menu-item">
+            <span>{{ getChapterTitle(chapter) }}</span>
+            <div class="actions">
+              <el-button link type="primary" size="small" @click.stop="handleEditChapter(chapter, $event)">
+                <el-icon><Edit /></el-icon>
+              </el-button>
+              <el-button link type="danger" size="small" @click.stop="handleDeleteChapter(chapter, $event)">
+                <el-icon><Delete /></el-icon>
+              </el-button>
+            </div>
+          </div>
+        </el-menu-item>
+      </el-menu>
+    </el-aside>
+    
+    <!-- 右侧内容区域 -->
+    <el-main class="content-main">
+      <div v-if="currentChapter">
+        <el-header class="content-header">
+          <div>
+            <h3 class="content-title">{{ getChapterTitle(currentChapter) }}</h3>
+            <p v-if="currentChapter.description" class="content-description">{{ currentChapter.description }}</p>
+          </div>
+          <el-button type="primary" @click="showUploadModal = true">
+            <el-icon><Upload /></el-icon>上传资源
           </el-button>
-        </div>
-        <el-menu :default-active="currentChapter?.id.toString()" @select="handleChapterSelect" class="chapter-menu">
-          <el-menu-item v-for="chapter in course.chapters" :key="chapter.id" :index="chapter.id.toString()">
-            <el-icon><Document /></el-icon>
-            <template #title>
-              <div class="chapter-menu-item">
-                <span>{{ chapter.title }}</span>
-                <el-tag size="small" type="info">{{ chapter.resources?.length || 0 }}个资源</el-tag>
+        </el-header>
+        
+        <!-- 资源列表 -->
+        <div class="resource-list">
+          <div class="resource-row" v-for="resource in currentChapter.resources" :key="resource.id">
+            <!-- PDF资源 -->
+            <template v-if="resource.type === 'pdf'">
+              <div class="resource-icon pdf-icon">
+                <el-icon><Document /></el-icon>
+              </div>
+              <div class="resource-info">
+                <div class="resource-name">{{ resource.name }}</div>
+                <div class="resource-meta">
+                  <span>{{ resource.uploadTime }}</span>
+                  <span>{{ resource.size }}</span>
+                </div>
+              </div>
+              <div class="resource-actions">
+                <el-button type="primary" link size="small">
+                  <el-icon><View /></el-icon>预览
+                </el-button>
+                <el-button type="primary" link size="small">
+                  <el-icon><Download /></el-icon>下载
+                </el-button>
+                <el-button type="danger" link size="small" @click="deleteResource(resource)">
+                  <el-icon><Delete /></el-icon>删除
+                </el-button>
               </div>
             </template>
-          </el-menu-item>
-        </el-menu>
-      </el-aside>
-      
-      <!-- Right Content Area -->
-      <el-main class="content-main">
-        <div v-if="currentChapter">
-          <el-header class="content-header">
-            <div>
-              <h3 class="content-title">{{ currentChapter.title }}</h3>
-              <p class="content-description">{{ currentChapter.description }}</p>
-            </div>
-            <el-button type="primary" @click="showUploadModal = true">
-              <el-icon><Upload /></el-icon>上传资源
-            </el-button>
-          </el-header>
-          <div class="resource-grid">
-            <el-card v-for="resource in currentChapter.resources" :key="resource.id" shadow="hover" class="resource-card">
-              <div class="resource-content">
-                <div :class="['resource-icon', getResourceTypeClass(resource.type)]">
-                  <el-icon size="24"><component :is="getResourceIcon(resource.type)" /></el-icon>
-                </div>
-                <div class="resource-info">
-                  <h4 class="resource-name">{{ resource.name }}</h4>
-                  <div class="resource-meta">
-                    <span><el-icon><Calendar /></el-icon>{{ resource.uploadTime }}</span>
-                    <span><el-icon><Files /></el-icon>{{ resource.size }}</span>
-                  </div>
-                  <div class="resource-actions">
-                    <el-button type="primary" link size="small">预览</el-button>
-                    <el-button type="primary" link size="small">下载</el-button>
-                    <el-button type="danger" link size="small" @click="deleteResource(resource)">删除</el-button>
-                  </div>
+            
+            <!-- 视频资源 -->
+            <template v-else-if="resource.type === 'video'">
+              <div class="resource-icon video-icon">
+                <el-icon><VideoCamera /></el-icon>
+              </div>
+              <div class="resource-info">
+                <div class="resource-name">{{ resource.name }}</div>
+                <div class="resource-meta">
+                  <span>{{ resource.uploadTime }}</span>
+                  <span>{{ resource.size }}</span>
                 </div>
               </div>
-            </el-card>
+              <div class="resource-actions">
+                <el-button type="primary" link size="small">
+                  <el-icon><VideoPlay /></el-icon>播放
+                </el-button>
+                <el-button type="primary" link size="small">
+                  <el-icon><Download /></el-icon>下载
+                </el-button>
+                <el-button type="danger" link size="small" @click="deleteResource(resource)">
+                  <el-icon><Delete /></el-icon>删除
+                </el-button>
+              </div>
+            </template>
+            
+            <!-- 其他资源类型 -->
+            <template v-else>
+              <div class="resource-icon" :class="getResourceTypeClass(resource.type)">
+                <el-icon><component :is="getResourceIcon(resource.type)" /></el-icon>
+              </div>
+              <div class="resource-info">
+                <div class="resource-name">{{ resource.name }}</div>
+                <div class="resource-meta">
+                  <span>{{ resource.uploadTime }}</span>
+                  <span>{{ resource.size }}</span>
+                </div>
+              </div>
+              <div class="resource-actions">
+                <el-button type="primary" link size="small">
+                  <el-icon><Download /></el-icon>下载
+                </el-button>
+                <el-button type="danger" link size="small" @click="deleteResource(resource)">
+                  <el-icon><Delete /></el-icon>删除
+                </el-button>
+              </div>
+            </template>
           </div>
+          
+          <el-empty v-if="!currentChapter.resources || currentChapter.resources.length === 0" description="该章节下暂无资源" />
         </div>
-        <el-empty v-else description="请从左侧选择一个章节以查看资源"></el-empty>
-      </el-main>
-    </el-container>
-  </el-dialog>
+      </div>
+      <el-empty v-else description="请从左侧选择一个章节以查看资源"></el-empty>
+    </el-main>
+  </el-container>
 
-  <!-- 新增章节模态框 -->
+  <!-- 新增/编辑章节模态框 -->
   <el-dialog
-    v-model="showNewChapterModal"
-    title="添加章节"
+    v-model="showChapterModal"
+    :title="isEditMode ? '编辑章节' : '添加章节'"
     width="500px"
     append-to-body
   >
-    <el-form :model="newChapter" label-position="top">
+    <el-form :model="chapterModel" label-position="top">
       <el-form-item label="章节标题" required>
-        <el-input v-model="newChapter.title" placeholder="请输入章节标题" />
-      </el-form-item>
-      <el-form-item label="章节描述">
-        <el-input 
-          v-model="newChapter.description" 
-          type="textarea" 
-          rows="3"
-          placeholder="请输入章节描述" 
-        />
+        <el-input v-model="chapterModel.chapter_name" placeholder='请输入章节标题，如"课程介绍"' />
       </el-form-item>
     </el-form>
     <template #footer>
       <span class="dialog-footer">
-        <el-button @click="showNewChapterModal = false">取消</el-button>
-        <el-button type="primary" @click="addNewChapter">确认添加</el-button>
+        <el-button @click="showChapterModal = false">取消</el-button>
+        <el-button type="primary" @click="saveChapter" :loading="isSaving">确认</el-button>
       </span>
     </template>
   </el-dialog>
@@ -103,7 +158,7 @@
     append-to-body
   >
     <div v-if="currentChapter">
-      <h3 class="text-lg font-medium mb-4">上传到：{{ currentChapter.title }}</h3>
+      <h3 class="text-lg font-medium mb-4">上传到：{{ getChapterTitle(currentChapter) }}</h3>
       
       <!-- 上传组件 -->
       <el-upload
@@ -159,27 +214,30 @@
 </template>
 
 <script setup>
-import { ref, defineProps, defineEmits, watch } from 'vue';
+import { ref, defineProps, defineEmits, watch, computed } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
-import { Plus, Document, Upload, Calendar, Files } from '@element-plus/icons-vue';
+import { 
+  Plus, Document, Upload, Calendar, Files, Edit, Delete, 
+  VideoCamera, Picture, View, Download, VideoPlay 
+} from '@element-plus/icons-vue';
 
 const props = defineProps({
-  show: {
-    type: Boolean,
-    default: false
-  },
   course: {
     type: Object,
     default: () => ({})
   }
 });
 
-const emit = defineEmits(['update:show', 'update:course']);
+const emit = defineEmits(['update:course']);
 
 // 当前选中的章节
 const currentChapter = ref(null);
-// 新增章节对话框显示状态
-const showNewChapterModal = ref(false);
+// 章节对话框显示状态
+const showChapterModal = ref(false);
+// 是否为编辑模式
+const isEditMode = ref(false);
+// 保存章节的加载状态
+const isSaving = ref(false);
 // 上传资源对话框显示状态
 const showUploadModal = ref(false);
 // 上传状态
@@ -187,10 +245,11 @@ const uploading = ref(false);
 // 选中的文件
 const selectedFile = ref(null);
 
-// 新章节表单数据
-const newChapter = ref({
-  title: '',
-  description: '',
+// 章节表单数据
+const chapterModel = ref({
+  chapter_id: null,
+  chapter_name: '',
+  course_id: null
 });
 
 // 新资源表单数据
@@ -200,44 +259,232 @@ const newResource = ref({
 });
 
 // 监听课程变化，重置当前选中的章节
-watch(() => props.course, (newVal) => {
-  if (newVal && newVal.chapters && newVal.chapters.length > 0) {
-    currentChapter.value = newVal.chapters[0];
+watch(() => props.course, (newCourse) => {
+  if (newCourse && newCourse.chapters && newCourse.chapters.length > 0) {
+    if (!currentChapter.value || !newCourse.chapters.some(c => c.chapter_id === currentChapter.value.chapter_id)) {
+      currentChapter.value = newCourse.chapters[0];
+    } else {
+      // 如果当前选中的章节仍然存在，则更新它的引用
+      currentChapter.value = newCourse.chapters.find(c => c.chapter_id === currentChapter.value.chapter_id);
+    }
   } else {
     currentChapter.value = null;
   }
 }, { deep: true, immediate: true });
 
+// 生成章节标题
+const getChapterTitle = (chapter) => {
+  if (!chapter) return '';
+  
+  // 如果章节名称已包含"第X章"格式，则直接返回
+  if (chapter.chapter_name.match(/^第[\d一二三四五六七八九十]+章/)) {
+    return chapter.chapter_name;
+  }
+  
+  // 找出章节在数组中的位置
+  const index = props.course.chapters.findIndex(c => c.chapter_id === chapter.chapter_id);
+  if (index === -1) return chapter.chapter_name;
+  
+  // 生成"第X章"格式的标题
+  return `第${index + 1}章：${chapter.chapter_name}`;
+};
+
+// 获取排序后的章节
+const sortedChapters = computed(() => {
+  if (!props.course.chapters || props.course.chapters.length === 0) {
+    return [];
+  }
+  
+  // 按照章节ID进行排序，确保稳定的顺序
+  return [...props.course.chapters].sort((a, b) => {
+    // 假设 chapter_id 是递增的，可以代表创建顺序
+    return a.chapter_id - b.chapter_id;
+  });
+});
+
+// 获取下一个可用的章节序号
+const getNextChapterNumber = () => {
+  return props.course.chapters.length + 1;
+};
+
 // 根据资源类型获取样式类
 const getResourceTypeClass = (type) => {
   const classes = {
-    'pdf': 'pdf-icon-bg',
-    'doc': 'doc-icon-bg',
-    'video': 'video-icon-bg',
-    'image': 'image-icon-bg'
+    'pdf': 'pdf-icon',
+    'doc': 'doc-icon',
+    'video': 'video-icon',
+    'image': 'image-icon',
+    'other': 'other-icon'
   };
-  return classes[type] || 'other-icon-bg';
+  return classes[type] || 'other-icon';
 };
 
 // 根据资源类型获取图标
 const getResourceIcon = (type) => {
   const icons = {
-    'pdf': IconDoc,
-    'doc': IconDoc,
-    'video': IconVideo,
-    'image': IconImage
+    'pdf': Document,
+    'doc': Document,
+    'video': VideoCamera,
+    'image': Picture,
+    'other': Files
   };
-  return icons[type];
+  return icons[type] || Files;
 };
 
-// 选择章节
-const selectChapter = (chapter) => {
-  currentChapter.value = chapter;
+const handleMenuSelect = (index) => {
+  const chapter = props.course.chapters.find(c => c.chapter_id.toString() === index);
+  if (chapter) {
+    currentChapter.value = chapter;
+  }
 };
 
-// 关闭课程详情弹窗
-const closeModal = () => {
-  emit('update:show', false);
+const handleAddChapter = () => {
+  isEditMode.value = false;
+  chapterModel.value = {
+    chapter_id: null,
+    chapter_name: '', // 让用户输入纯标题
+    course_id: props.course.id,
+    resources: []
+  };
+  showChapterModal.value = true;
+};
+
+const handleEditChapter = (chapter, event) => {
+  if (!chapter || !chapter.chapter_id) {
+    ElMessage.warning('章节数据不完整，无法编辑');
+    return;
+  }
+  
+  isEditMode.value = true;
+  chapterModel.value = { ...chapter };
+  showChapterModal.value = true;
+  
+  // 阻止事件冒泡，防止触发菜单项选择
+  if (event) event.stopPropagation();
+};
+
+const handleDeleteChapter = (chapter, event) => {
+  // 验证是否可以删除
+  if (!chapter || !chapter.chapter_id) {
+    ElMessage.warning('章节数据不完整，无法删除');
+    return;
+  }
+
+  // 阻止事件冒泡，防止触发菜单项选择
+  if (event) event.stopPropagation();
+
+  // 确认删除
+  ElMessageBox.confirm(
+    `确定要删除章节 "${getChapterTitle(chapter)}" 吗？`,
+    '警告', 
+    {
+      confirmButtonText: '确定删除',
+      cancelButtonText: '取消',
+      type: 'warning',
+    }
+  ).then(() => {
+    console.log(`删除章节 ${chapter.chapter_id}`);
+    
+    // 从课程章节列表中过滤掉要删除的章节
+    const updatedChapters = props.course.chapters.filter(c => c.chapter_id !== chapter.chapter_id);
+    
+    // 发送更新事件
+    emit('update:course', { ...props.course, chapters: updatedChapters });
+    
+    // 如果删除的是当前选中的章节，则自动选择第一个章节
+    if (currentChapter.value && currentChapter.value.chapter_id === chapter.chapter_id) {
+      currentChapter.value = updatedChapters.length > 0 ? updatedChapters[0] : null;
+    }
+    
+    ElMessage.success('章节已成功删除');
+  }).catch(() => {
+    ElMessage.info('已取消删除操作');
+  });
+};
+
+// 保存（新增或编辑）章节
+const saveChapter = async () => {
+  // 表单验证
+  if (!chapterModel.value.chapter_name?.trim()) {
+    ElMessage.warning('请输入章节名称');
+    return;
+  }
+
+  if (chapterModel.value.chapter_name.length > 50) {
+    ElMessage.warning('章节名称不能超过50个字符');
+    return;
+  }
+
+  try {
+    // 开始保存，显示加载状态
+    isSaving.value = true;
+
+    // 模拟网络延迟
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    if (isEditMode.value) {
+      // 编辑章节
+      if (!chapterModel.value.chapter_id) {
+        throw new Error('章节ID不存在，无法更新');
+      }
+      
+      console.log('更新章节', chapterModel.value);
+      
+      // 确保章节名称已经被去除了首尾空格
+      const updatedChapterName = chapterModel.value.chapter_name.trim();
+      
+      // 创建更新后的章节数组
+      const updatedChapters = props.course.chapters.map(c => 
+        c.chapter_id === chapterModel.value.chapter_id 
+          ? { ...c, chapter_name: updatedChapterName } 
+          : c
+      );
+      
+      // 发送更新事件
+      emit('update:course', { ...props.course, chapters: updatedChapters });
+      
+      // 更新当前选中的章节
+      if (currentChapter.value && currentChapter.value.chapter_id === chapterModel.value.chapter_id) {
+        currentChapter.value = { ...currentChapter.value, chapter_name: updatedChapterName };
+      }
+      
+      ElMessage.success('章节更新成功');
+    } else {
+      // 新增章节
+      const nextNumber = getNextChapterNumber();
+      const finalChapterName = `第${nextNumber}章：${chapterModel.value.chapter_name.trim()}`;
+
+      // 创建新章节数据对象
+      const newChapterData = {
+        chapter_id: Date.now(), // 生成唯一ID
+        chapter_name: finalChapterName,
+        course_id: props.course.id,
+        resources: [] // 初始为空资源列表
+      };
+      
+      console.log('新增章节', newChapterData);
+      
+      // 添加到章节数组
+      const updatedChapters = [...props.course.chapters, newChapterData];
+      
+      // 发送更新事件
+      emit('update:course', { ...props.course, chapters: updatedChapters });
+      
+      // 自动选中新创建的章节
+      currentChapter.value = newChapterData;
+      
+      ElMessage.success('章节添加成功');
+    }
+    
+    // 关闭对话框
+    showChapterModal.value = false;
+  } catch (error) {
+    console.error('保存章节时出错:', error);
+    ElMessage.error(`操作失败: ${error.message || '未知错误'}`);
+  } finally {
+    // 无论成功还是失败，都重置加载状态
+    isSaving.value = false;
+  }
 };
 
 // 处理文件变更
@@ -262,44 +509,6 @@ const handleFileChange = (file) => {
       newResource.value.type = 'other';
     }
   }
-};
-
-// 添加新章节
-const addNewChapter = () => {
-  // 表单验证
-  if (!newChapter.value.title) {
-    ElMessage.warning('请输入章节标题');
-    return;
-  }
-  
-  // 创建新章节对象
-  const chapter = {
-    id: Date.now(), // 使用时间戳作为临时ID
-    title: newChapter.value.title,
-    description: newChapter.value.description,
-    resources: []
-  };
-  
-  // 添加新章节到课程中
-  const updatedCourse = { 
-    ...props.course,
-    chapters: [...(props.course.chapters || []), chapter]
-  };
-  
-  // 更新课程数据
-  emit('update:course', updatedCourse);
-  
-  // 选择新创建的章节
-  currentChapter.value = chapter;
-  
-  // 关闭对话框并重置表单
-  showNewChapterModal.value = false;
-  newChapter.value = {
-    title: '',
-    description: ''
-  };
-  
-  ElMessage.success('章节添加成功');
 };
 
 // 上传资源
@@ -340,7 +549,7 @@ const uploadResource = () => {
       
       // 更新课程中的章节
       const updatedChapters = props.course.chapters.map(chapter => 
-        chapter.id === currentChapter.value.id ? updatedChapter : chapter
+        chapter.chapter_id === currentChapter.value.chapter_id ? updatedChapter : chapter
       );
       
       // 更新课程数据
@@ -384,7 +593,7 @@ const deleteResource = (resource) => {
       
       // 更新课程中的章节
       const updatedChapters = props.course.chapters.map(chapter => 
-        chapter.id === currentChapter.value.id ? updatedChapter : chapter
+        chapter.chapter_id === currentChapter.value.chapter_id ? updatedChapter : chapter
       );
       
       // 更新课程数据
@@ -417,39 +626,45 @@ const formatFileSize = (size) => {
     return (size / (1024 * 1024 * 1024)).toFixed(1) + 'GB';
   }
 };
-
-const handleChapterSelect = (index) => {
-  currentChapter.value = props.course.chapters.find(c => c.id.toString() === index);
-};
 </script>
 
 <style scoped>
-.course-detail-dialog .el-dialog__body {
-  padding: 0;
-}
 .chapter-aside {
   border-right: 1px solid var(--el-border-color-light);
   display: flex;
   flex-direction: column;
 }
+
 .chapter-header {
   padding: 1rem;
   border-bottom: 1px solid var(--el-border-color-light);
 }
+
 .chapter-menu {
-  border-right: none;
   flex-grow: 1;
   overflow-y: auto;
+  border-right: none;
 }
+
 .chapter-menu-item {
   display: flex;
   justify-content: space-between;
-  width: 100%;
   align-items: center;
+  width: 100%;
 }
+
+.chapter-menu-item .actions {
+  display: none;
+}
+
+.el-menu-item:hover .actions {
+  display: flex;
+}
+
 .content-main {
   padding: 0;
 }
+
 .content-header {
   height: auto;
   padding: 1.5rem;
@@ -458,64 +673,71 @@ const handleChapterSelect = (index) => {
   justify-content: space-between;
   align-items: center;
 }
+
 .content-title {
   font-size: 1.5rem;
   font-weight: 600;
   margin: 0;
 }
+
 .content-description {
   color: var(--el-text-color-secondary);
   margin-top: 0.5rem;
 }
-.resource-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 1rem;
+
+.resource-list {
   padding: 1.5rem;
-  height: calc(75vh - 120px); /* Adjust height based on header */
+  height: calc(75vh - 120px);
   overflow-y: auto;
 }
-.resource-card .resource-content {
+
+.resource-row {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--el-border-color-lighter);
 }
+
+.resource-row:hover {
+  background-color: var(--el-fill-color-light);
+}
+
 .resource-icon {
-  width: 48px;
-  height: 48px;
-  border-radius: 8px;
+  width: 40px;
+  height: 40px;
+  border-radius: 4px;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-right: 1rem;
+  margin-right: 12px;
   color: white;
+  font-size: 20px;
 }
-.pdf-icon-bg { background-color: #f56c6c; }
-.doc-icon-bg { background-color: #409eff; }
-.video-icon-bg { background-color: #9370db; }
-.image-icon-bg { background-color: #67c23a; }
-.other-icon-bg { background-color: #909399; }
+
+.pdf-icon { background-color: #f56c6c; }
+.doc-icon { background-color: #409eff; }
+.video-icon { background-color: #9370db; }
+.image-icon { background-color: #67c23a; }
+.other-icon { background-color: #909399; }
 
 .resource-info {
   flex-grow: 1;
 }
+
 .resource-name {
   font-weight: 500;
-  margin: 0 0 0.5rem 0;
+  margin-bottom: 4px;
 }
+
 .resource-meta {
   display: flex;
-  gap: 1rem;
+  gap: 16px;
   color: var(--el-text-color-secondary);
-  font-size: 0.8rem;
-  align-items: center;
-  margin-bottom: 0.5rem;
+  font-size: 12px;
 }
-.resource-meta span {
-  display: flex;
-  align-items: center;
-  gap: 0.3rem;
-}
+
 .resource-actions {
-  text-align: right;
+  display: flex;
+  gap: 8px;
 }
 </style> 

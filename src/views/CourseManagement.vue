@@ -17,9 +17,9 @@
         />
         <!-- 课程类型筛选 -->
         <el-radio-group v-model="courseTypeFilter" size="small">
-          <el-radio-button label="all">全部课程</el-radio-button>
-          <el-radio-button label="live">直播课程</el-radio-button>
-          <el-radio-button label="recorded">录播课程</el-radio-button>
+          <el-radio-button value="all">全部课程</el-radio-button>
+          <el-radio-button value="live">直播课程</el-radio-button>
+          <el-radio-button value="recorded">录播课程</el-radio-button>
         </el-radio-group>
       </div>
       <!-- 视图模式切换 (网格/列表) -->
@@ -100,7 +100,7 @@
               </el-tag>
               <span class="chapter-count">
                 <el-icon><Reading /></el-icon>
-                {{ course.chapters }} 章节
+                {{ course.chapters.length }} 章节
               </span>
             </div>
             <!-- 课程时间信息 -->
@@ -307,11 +307,20 @@
     </el-dialog>
 
     <!-- 课程详情对话框 -->
-    <CourseDetail 
-      v-if="showCourseDetail"
-      v-model:show="showCourseDetail"
-      v-model:course="currentCourse"
-    />
+    <el-dialog
+      v-model="showCourseDetail"
+      :title="currentCourse ? currentCourse.name : '课程详情'"
+      width="85%"
+      top="5vh"
+      destroy-on-close
+      @close="currentCourse = null"
+    >
+      <CourseDetail 
+        v-if="currentCourse"
+        :course="currentCourse" 
+        @update:course="handleCourseUpdate"
+      />
+    </el-dialog>
   </div>
 </template>
 
@@ -372,9 +381,8 @@ const liveForm = ref({
 const newCourse = ref({
   course_name: '',
   course_type: 'recorded',
-  teacher_id: 1, // 假设当前登录的教师ID为1
   assistant_id: null,
-  cover_image: 'https://mastergo.com/ai/api/search-image?query=modern educational content displayed on digital devices with clean minimalist background, e-learning concept visualization&width=800&height=600&orientation=landscape&flag=9edb9d518dbaee8af3cd890dbbf457e2',
+  cover_image: '',
   start_time: '',
   end_time: ''
 });
@@ -388,36 +396,58 @@ const loading = ref(false);
 const courses = ref([
   {
     id: 1,
-    name: '高等数学（上）',
-    assistant: '李思琪',
+    name: '高等数学（一）',
+    assistant: '张三',
+    cover: 'https://shadow.elemecdn.com/app/element/hamburger.9cf7b091-55e9-11e9-a976-7f4d0b07eef6.png',
     status: '进行中',
-    chapters: 12,
     courseType: 'recorded',
-    startTime: '2023-11-01 08:30:00',
-    endTime: '2024-01-20 18:00:00',
-    cover: 'https://mastergo.com/ai/api/search-image?query=modern mathematics textbook and calculator with geometric shapes and formulas on a clean white desk with soft natural lighting, professional education concept&width=800&height=600&orientation=landscape&flag=64f0842ee619980df11fd55773253698'
+    startTime: '2024-03-01 09:00',
+    endTime: '2024-07-01 18:00',
+    chapters: [
+      { 
+        chapter_id: 1, 
+        course_id: 1, 
+        chapter_name: '课程介绍', 
+        resources: [
+          { id: 101, name: '课程大纲.pdf', type: 'pdf', size: '2.5MB', uploadTime: '2024-07-28' },
+          { id: 102, name: '介绍视频.mp4', type: 'video', size: '156MB', uploadTime: '2024-07-28' }
+        ]
+      },
+      { 
+        chapter_id: 2, 
+        course_id: 1, 
+        chapter_name: '集合与函数', 
+        resources: [
+          { id: 201, name: '集合的概念.pdf', type: 'pdf', size: '3.1MB', uploadTime: '2024-07-29' }
+        ]
+      },
+      { 
+        chapter_id: 3, 
+        course_id: 1, 
+        chapter_name: '极限与连续', 
+        resources: [] 
+      }
+    ]
   },
   {
     id: 2,
     name: '线性代数',
     assistant: '张晓峰',
-    status: '未开始',
-    chapters: 8,
+    status: '已结束',
     courseType: 'live',
-    startTime: '2023-12-15 14:00:00',
-    endTime: '2024-03-10 16:30:00',
-    cover: 'https://mastergo.com/ai/api/search-image?query=abstract mathematical matrix visualization with clean modern design elements on a simple white background, educational concept art&width=800&height=600&orientation=landscape&flag=d0bb9e5a6038651daa9fe7ca7d38c814'
+    startTime: '2023-09-01 14:00',
+    endTime: '2024-01-15 16:00',
+    chapters: []
   },
   {
     id: 3,
     name: '概率论与数理统计',
     assistant: '陈雨婷',
     status: '进行中',
-    chapters: 10,
     courseType: 'recorded',
-    startTime: '2023-10-10 09:00:00',
-    endTime: '2024-02-28 17:30:00',
-    cover: 'https://mastergo.com/ai/api/search-image?query=statistical graphs and probability curves displayed on modern digital screens with clean white background, data science education concept&width=800&height=600&orientation=landscape&flag=366b9daa38d1637db9e6a2b305852a55'
+    startTime: '2024-03-01 09:00',
+    endTime: '2024-07-01 18:00',
+    chapters: []
   }
 ]);
 
@@ -496,7 +526,6 @@ const createCourse = async () => {
     const courseData = {
       course_name: newCourse.value.course_name,
       course_type: newCourse.value.course_type,
-      teacher_id: newCourse.value.teacher_id,
       assistant_id: newCourse.value.assistant_id,
       cover_image: newCourse.value.cover_image,
       start_time: newCourse.value.start_time,
@@ -516,7 +545,7 @@ const createCourse = async () => {
       name: courseData.course_name,
       assistant: assistants.value.find(a => a.id === courseData.assistant_id)?.name || '暂无助教',
       status: '未开始',
-      chapters: 0,
+      chapters: [],
       courseType: courseData.course_type,
       startTime: courseData.start_time,
       endTime: courseData.end_time,
@@ -530,9 +559,8 @@ const createCourse = async () => {
     newCourse.value = {
       course_name: '',
       course_type: 'recorded',
-      teacher_id: 1,
       assistant_id: null,
-      cover_image: 'https://mastergo.com/ai/api/search-image?query=modern educational content displayed on digital devices with clean minimalist background, e-learning concept visualization&width=800&height=600&orientation=landscape&flag=9edb9d518dbaee8af3cd890dbbf457e2',
+      cover_image: '',
       start_time: '',
       end_time: ''
     };
@@ -664,14 +692,23 @@ const uploadVideo = async () => {
     // formData.append('description', uploadForm.value.description);
     // await axios.post('/api/course/upload', formData);
     
-    // 模拟成功响应
-    // 更新当前课程的章节数
+    // 更新UI
     const courseIndex = courses.value.findIndex(c => c.id === currentCourse.value.id);
     if (courseIndex !== -1) {
-      courses.value[courseIndex].chapters += 1;
+     courses.value[courseIndex].chapters.push({
+       chapter_id: Date.now(), // 使用时间戳作为唯一ID
+       chapter_name: uploadForm.value.title,
+       course_id: currentCourse.value.id,
+       resources: [{
+          id: Date.now() + 1,
+          name: selectedFile.value.name,
+          type: 'video',
+          size: 'N/A',
+          uploadTime: new Date().toISOString().split('T')[0]
+       }]
+     });
     }
     
-    ElMessage.success('视频上传成功');
     showUploadModal.value = false;
   } catch (error) {
     console.error('上传视频失败:', error);
@@ -730,6 +767,17 @@ const openCourseDetail = (course) => {
   };
   
   showCourseDetail.value = true;
+};
+
+const handleCourseUpdate = (updatedCourse) => {
+  if (!updatedCourse) return;
+  const index = courses.value.findIndex(c => c.id === updatedCourse.id);
+  if (index !== -1) {
+    // 更新课程总列表
+    courses.value[index] = updatedCourse;
+    // 同步更新当前正在查看的课程对象，这是确保子组件立即刷新的关键
+    currentCourse.value = updatedCourse;
+  }
 };
 </script>
 
