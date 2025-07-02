@@ -4,33 +4,73 @@
     <el-aside width="260px" class="chapter-aside">
       <div class="chapter-header">
         <el-button type="primary" @click="handleAddChapter()" style="width: 100%;">
-          <el-icon><Plus /></el-icon>添加章节
+          <el-icon><Plus /></el-icon>添加主章节
         </el-button>
       </div>
       
-      <!-- 使用菜单代替树形组件 -->
+      <!-- 使用支持层级的菜单 -->
       <el-menu 
         :default-active="currentChapter?.chapter_id?.toString()" 
         class="chapter-menu"
         @select="handleMenuSelect"
       >
-        <el-menu-item 
-          v-for="chapter in sortedChapters" 
-          :key="chapter.chapter_id"
-          :index="chapter.chapter_id.toString()"
-        >
-          <div class="chapter-menu-item">
-            <span>{{ getChapterTitle(chapter) }}</span>
-            <div class="actions">
-              <el-button link type="primary" size="small" @click.stop="handleEditChapter(chapter, $event)">
-                <el-icon><Edit /></el-icon>
-              </el-button>
-              <el-button link type="danger" size="small" @click.stop="handleDeleteChapter(chapter, $event)">
-                <el-icon><Delete /></el-icon>
-              </el-button>
+        <template v-for="chapter in chapterTree" :key="chapter.chapter_id">
+          <!-- 有子章节的顶级章节，渲染为子菜单 -->
+          <el-sub-menu v-if="chapter.children && chapter.children.length > 0" :index="chapter.chapter_id.toString()">
+            <template #title>
+              <div class="chapter-menu-item">
+                <span>{{ getChapterTitle(chapter) }}</span>
+                <div class="actions">
+                  <el-button link type="success" size="small" @click.stop="handleAddChapter(chapter)">
+                    <el-icon><FolderAdd /></el-icon>
+                  </el-button>
+                  <el-button link type="primary" size="small" @click.stop="handleEditChapter(chapter, $event)">
+                    <el-icon><Edit /></el-icon>
+                  </el-button>
+                  <el-button link type="danger" size="small" @click.stop="handleDeleteChapter(chapter, $event)">
+                    <el-icon><Delete /></el-icon>
+                  </el-button>
+                </div>
+              </div>
+            </template>
+            <!-- 子章节列表 -->
+            <el-menu-item 
+              v-for="child in chapter.children" 
+              :key="child.chapter_id"
+              :index="child.chapter_id.toString()"
+            >
+              <div class="chapter-menu-item">
+                <span>{{ getChapterTitle(child) }}</span>
+                <div class="actions">
+                  <el-button link type="primary" size="small" @click.stop="handleEditChapter(child, $event)">
+                    <el-icon><Edit /></el-icon>
+                  </el-button>
+                  <el-button link type="danger" size="small" @click.stop="handleDeleteChapter(child, $event)">
+                    <el-icon><Delete /></el-icon>
+                  </el-button>
+                </div>
+              </div>
+            </el-menu-item>
+          </el-sub-menu>
+          
+          <!-- 没有子章节的顶级章节 -->
+          <el-menu-item v-else :index="chapter.chapter_id.toString()">
+            <div class="chapter-menu-item">
+              <span>{{ getChapterTitle(chapter) }}</span>
+              <div class="actions">
+                <el-button link type="success" size="small" @click.stop="handleAddChapter(chapter)">
+                  <el-icon><FolderAdd /></el-icon>
+                </el-button>
+                <el-button link type="primary" size="small" @click.stop="handleEditChapter(chapter, $event)">
+                  <el-icon><Edit /></el-icon>
+                </el-button>
+                <el-button link type="danger" size="small" @click.stop="handleDeleteChapter(chapter, $event)">
+                  <el-icon><Delete /></el-icon>
+                </el-button>
+              </div>
             </div>
-          </div>
-        </el-menu-item>
+          </el-menu-item>
+        </template>
       </el-menu>
     </el-aside>
     
@@ -42,13 +82,23 @@
             <h3 class="content-title">{{ getChapterTitle(currentChapter) }}</h3>
             <p v-if="currentChapter.description" class="content-description">{{ currentChapter.description }}</p>
           </div>
-          <el-button type="primary" @click="showUploadModal = true">
-            <el-icon><Upload /></el-icon>上传资源
-          </el-button>
+          <div class="header-actions" v-if="currentChapter && currentChapter.level !== 0">
+            <el-button type="primary" @click="showUploadModal = true">
+              <el-icon><Upload /></el-icon>上传资源
+            </el-button>
+            <el-button type="primary" @click="showResourceList">
+              <el-icon><Tickets /></el-icon>资源列表
+            </el-button>
+          </div>
         </el-header>
         
-        <!-- 资源列表 -->
-        <div class="resource-list">
+        <!-- 如果选中的是顶级章节，显示提示 -->
+        <div v-if="currentChapter.level === 0" class="resource-list">
+          <el-empty description="这是一个主章节容器，请选择其下的具体章节以管理资源"></el-empty>
+        </div>
+        
+        <!-- 否则显示资源列表 -->
+        <div v-else class="resource-list">
           <div class="resource-row" v-for="resource in currentChapter.resources" :key="resource.id">
             <!-- PDF资源 -->
             <template v-if="resource.type === 'pdf'">
@@ -218,17 +268,36 @@ import { ref, defineProps, defineEmits, watch, computed } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { 
   Plus, Document, Upload, Calendar, Files, Edit, Delete, 
-  VideoCamera, Picture, View, Download, VideoPlay 
+  VideoCamera, Picture, View, Download, VideoPlay, Tickets, FolderAdd
 } from '@element-plus/icons-vue';
 
-const props = defineProps({
-  course: {
-    type: Object,
-    default: () => ({})
-  }
+// const props = defineProps({
+//   course: {
+//     type: Object,
+//     default: () => ({})
+//   }
+// });
+// 
+// const emit = defineEmits(['update:course']);
+
+// --- 模拟数据 ---
+const course = ref({
+  id: 101,
+  name: '高级Web开发',
+  chapters: [
+    { chapter_id: 1, course_id: 101, parent_id: 0, level: 0, chapter_name: '课程简介', sort_order: 1, resources: [ {id: 1, type: 'pdf', name: '课程大纲.pdf', uploadTime: '2023-10-27', size: '2.3MB'} ] },
+    { chapter_id: 2, course_id: 101, parent_id: 1, level: 1, chapter_name: '课程的背景与意义', sort_order: 1, resources: [] },
+    { chapter_id: 3, course_id: 101, parent_id: 1, level: 1, chapter_name: '课程的主要内容和目标', sort_order: 2, resources: [] },
+    { chapter_id: 4, course_id: 101, parent_id: 0, level: 0, chapter_name: 'Web前端开发基础', sort_order: 2, resources: [] },
+    { chapter_id: 5, course_id: 101, parent_id: 4, level: 1, chapter_name: 'HTML5 核心概念', sort_order: 1, resources: [] },
+    { chapter_id: 6, course_id: 101, parent_id: 4, level: 1, chapter_name: 'CSS3 样式与布局', sort_order: 2, resources: [] },
+    { chapter_id: 7, course_id: 101, parent_id: 4, level: 1, chapter_name: 'JavaScript 编程入门', sort_order: 3, resources: [] },
+    { chapter_id: 8, course_id: 101, parent_id: 0, level: 0, chapter_name: 'Vue.js 框架详解', sort_order: 3, resources: [] },
+    { chapter_id: 9, course_id: 101, parent_id: 8, level: 1, chapter_name: 'Vue 实例与生命周期', sort_order: 1, resources: [] },
+    { chapter_id: 10, course_id: 101, parent_id: 0, level: 0, chapter_name: '期末总结', sort_order: 4, resources: [] },
+  ]
 });
 
-const emit = defineEmits(['update:course']);
 
 // 当前选中的章节
 const currentChapter = ref(null);
@@ -249,7 +318,9 @@ const selectedFile = ref(null);
 const chapterModel = ref({
   chapter_id: null,
   chapter_name: '',
-  course_id: null
+  course_id: null,
+  parent_id: 0,
+  level: 0,
 });
 
 // 新资源表单数据
@@ -258,11 +329,73 @@ const newResource = ref({
   type: 'pdf',
 });
 
+
+// 预先计算好所有章节的完整标题
+const chapterFullTitles = computed(() => {
+  const titles = {};
+  if (!course.value || !course.value.chapters) return titles;
+
+  const chapters = course.value.chapters;
+  // 顶级章节
+  const roots = chapters
+    .filter(c => c.level === 0)
+    .sort((a, b) => a.sort_order - b.sort_order);
+
+  roots.forEach(root => {
+    titles[root.chapter_id] = `第${root.sort_order}章：${root.chapter_name}`;
+    
+    // 子章节
+    const children = chapters
+      .filter(c => c.parent_id === root.chapter_id)
+      .sort((a, b) => a.sort_order - b.sort_order);
+      
+    children.forEach(child => {
+      titles[child.chapter_id] = `${root.sort_order}.${child.sort_order} ${child.chapter_name}`;
+    });
+  });
+  
+  return titles;
+});
+
+// 将扁平的章节列表转换为树形结构
+const chapterTree = computed(() => {
+  if (!course.value.chapters) return [];
+
+  const chapters = course.value.chapters;
+  const chapterMap = {};
+  chapters.forEach(chapter => {
+    chapterMap[chapter.chapter_id] = { ...chapter, children: [] };
+  });
+
+  const roots = [];
+  chapters.forEach(chapter => {
+    if (chapter.parent_id && chapter.parent_id !== 0 && chapterMap[chapter.parent_id]) {
+        chapterMap[chapter.parent_id].children.push(chapterMap[chapter.chapter_id]);
+        // 按sort_order排序子章节
+        chapterMap[chapter.parent_id].children.sort((a, b) => a.sort_order - b.sort_order);
+    } else if (chapter.level === 0) { // 确保只有顶级章节才被添加到roots
+      roots.push(chapterMap[chapter.chapter_id]);
+    }
+  });
+  
+  // 按sort_order排序顶级章节
+  return roots.sort((a, b) => a.sort_order - b.sort_order);
+});
+
+
 // 监听课程变化，重置当前选中的章节
-watch(() => props.course, (newCourse) => {
+watch(() => course.value, (newCourse) => {
   if (newCourse && newCourse.chapters && newCourse.chapters.length > 0) {
-    if (!currentChapter.value || !newCourse.chapters.some(c => c.chapter_id === currentChapter.value.chapter_id)) {
-      currentChapter.value = newCourse.chapters[0];
+    const chapterExists = newCourse.chapters.some(c => c.chapter_id === currentChapter.value?.chapter_id);
+    
+    if (!currentChapter.value || !chapterExists) {
+       // 默认选中第一个顶级章节的第一个子章节（如果存在），否则选中顶级章节
+      const firstRoot = chapterTree.value[0];
+      if (firstRoot) {
+        currentChapter.value = firstRoot.children?.[0] || firstRoot;
+      } else {
+        currentChapter.value = null;
+      }
     } else {
       // 如果当前选中的章节仍然存在，则更新它的引用
       currentChapter.value = newCourse.chapters.find(c => c.chapter_id === currentChapter.value.chapter_id);
@@ -274,37 +407,26 @@ watch(() => props.course, (newCourse) => {
 
 // 生成章节标题
 const getChapterTitle = (chapter) => {
-  if (!chapter) return '';
-  
-  // 如果章节名称已包含"第X章"格式，则直接返回
-  if (chapter.chapter_name.match(/^第[\d一二三四五六七八九十]+章/)) {
-    return chapter.chapter_name;
-  }
-  
-  // 找出章节在数组中的位置
-  const index = props.course.chapters.findIndex(c => c.chapter_id === chapter.chapter_id);
-  if (index === -1) return chapter.chapter_name;
-  
-  // 生成"第X章"格式的标题
-  return `第${index + 1}章：${chapter.chapter_name}`;
+  return chapterFullTitles.value[chapter.chapter_id] || chapter.chapter_name;
 };
 
-// 获取排序后的章节
-const sortedChapters = computed(() => {
-  if (!props.course.chapters || props.course.chapters.length === 0) {
-    return [];
-  }
+// 获取排序后的章节 (此函数不再需要，由chapterTree替代)
+// const sortedChapters = computed(() => {
+//   if (!props.course.chapters || props.course.chapters.length === 0) {
+//     return [];
+//   }
   
-  // 按照章节ID进行排序，确保稳定的顺序
-  return [...props.course.chapters].sort((a, b) => {
-    // 假设 chapter_id 是递增的，可以代表创建顺序
-    return a.chapter_id - b.chapter_id;
-  });
-});
+//   // 按照章节ID进行排序，确保稳定的顺序
+//   return [...props.course.chapters].sort((a, b) => {
+//     // 假设 chapter_id 是递增的，可以代表创建顺序
+//     return a.chapter_id - b.chapter_id;
+//   });
+// });
 
 // 获取下一个可用的章节序号
-const getNextChapterNumber = () => {
-  return props.course.chapters.length + 1;
+const getNextChapterOrder = (parentId = 0) => {
+  const siblings = course.value.chapters.filter(c => c.parent_id === parentId);
+  return siblings.length > 0 ? Math.max(...siblings.map(c => c.sort_order)) + 1 : 1;
 };
 
 // 根据资源类型获取样式类
@@ -332,20 +454,36 @@ const getResourceIcon = (type) => {
 };
 
 const handleMenuSelect = (index) => {
-  const chapter = props.course.chapters.find(c => c.chapter_id.toString() === index);
+  const chapter = course.value.chapters.find(c => c.chapter_id.toString() === index);
   if (chapter) {
     currentChapter.value = chapter;
   }
 };
 
-const handleAddChapter = () => {
+const handleAddChapter = (parentChapter = null) => {
   isEditMode.value = false;
-  chapterModel.value = {
-    chapter_id: null,
-    chapter_name: '', // 让用户输入纯标题
-    course_id: props.course.id,
-    resources: []
-  };
+  
+  if(parentChapter){
+     // 添加子章节
+    chapterModel.value = {
+      chapter_id: null,
+      chapter_name: '',
+      course_id: course.value.id,
+      parent_id: parentChapter.chapter_id,
+      level: 1,
+      resources: []
+    };
+  } else {
+    // 添加顶级章节
+    chapterModel.value = {
+      chapter_id: null,
+      chapter_name: '',
+      course_id: course.value.id,
+      parent_id: 0,
+      level: 0,
+      resources: []
+    };
+  }
   showChapterModal.value = true;
 };
 
@@ -363,19 +501,21 @@ const handleEditChapter = (chapter, event) => {
   if (event) event.stopPropagation();
 };
 
-const handleDeleteChapter = (chapter, event) => {
-  // 验证是否可以删除
-  if (!chapter || !chapter.chapter_id) {
+const handleDeleteChapter = (chapterToDelete, event) => {
+  if (!chapterToDelete || !chapterToDelete.chapter_id) {
     ElMessage.warning('章节数据不完整，无法删除');
     return;
   }
 
-  // 阻止事件冒泡，防止触发菜单项选择
   if (event) event.stopPropagation();
 
-  // 确认删除
+  const children = course.value.chapters.filter(c => c.parent_id === chapterToDelete.chapter_id);
+  const confirmMessage = children.length > 0
+    ? `确定要删除章节 "${getChapterTitle(chapterToDelete)}" 及其所有子章节吗？同级章节将会重新排序。`
+    : `确定要删除章节 "${getChapterTitle(chapterToDelete)}" 吗？同级章节将会重新排序。`;
+
   ElMessageBox.confirm(
-    `确定要删除章节 "${getChapterTitle(chapter)}" 吗？`,
+    confirmMessage,
     '警告', 
     {
       confirmButtonText: '确定删除',
@@ -383,17 +523,49 @@ const handleDeleteChapter = (chapter, event) => {
       type: 'warning',
     }
   ).then(() => {
-    console.log(`删除章节 ${chapter.chapter_id}`);
+    let updatedChapters = [...course.value.chapters];
     
-    // 从课程章节列表中过滤掉要删除的章节
-    const updatedChapters = props.course.chapters.filter(c => c.chapter_id !== chapter.chapter_id);
+    // 收集所有需要删除的章节ID
+    const idsToDelete = [chapterToDelete.chapter_id];
+    if (chapterToDelete.level === 0) {
+      const childIds = updatedChapters
+        .filter(c => c.parent_id === chapterToDelete.chapter_id)
+        .map(c => c.chapter_id);
+      idsToDelete.push(...childIds);
+    }
     
-    // 发送更新事件
-    emit('update:course', { ...props.course, chapters: updatedChapters });
+    // 从数组中移除这些章节
+    updatedChapters = updatedChapters.filter(c => !idsToDelete.includes(c.chapter_id));
+
+    // --- 重新排序 ---
+    if (chapterToDelete.level === 0) {
+      // 重新排序所有顶级章节
+      const rootChaptersToUpdate = updatedChapters
+        .filter(c => c.level === 0)
+        .sort((a, b) => a.sort_order - b.sort_order);
+      
+      rootChaptersToUpdate.forEach((root, index) => {
+        const chapterInArray = updatedChapters.find(c => c.chapter_id === root.chapter_id);
+        if(chapterInArray) chapterInArray.sort_order = index + 1;
+      });
+    } else { // level === 1
+      // 重新排序被删除章节的同级章节
+      const siblingChaptersToUpdate = updatedChapters
+        .filter(c => c.parent_id === chapterToDelete.parent_id)
+        .sort((a, b) => a.sort_order - b.sort_order);
+        
+      siblingChaptersToUpdate.forEach((sibling, index) => {
+        const chapterInArray = updatedChapters.find(c => c.chapter_id === sibling.chapter_id);
+        if(chapterInArray) chapterInArray.sort_order = index + 1;
+      });
+    }
+
+    // 更新课程数据
+    course.value.chapters = updatedChapters;
     
-    // 如果删除的是当前选中的章节，则自动选择第一个章节
-    if (currentChapter.value && currentChapter.value.chapter_id === chapter.chapter_id) {
-      currentChapter.value = updatedChapters.length > 0 ? updatedChapters[0] : null;
+    // 如果删除的是当前选中的章节，则重置选中，让 watch 效果来选择新的默认章节
+    if (currentChapter.value && idsToDelete.includes(currentChapter.value.chapter_id)) {
+      currentChapter.value = null;
     }
     
     ElMessage.success('章节已成功删除');
@@ -434,41 +606,40 @@ const saveChapter = async () => {
       const updatedChapterName = chapterModel.value.chapter_name.trim();
       
       // 创建更新后的章节数组
-      const updatedChapters = props.course.chapters.map(c => 
+      const updatedChapters = course.value.chapters.map(c => 
         c.chapter_id === chapterModel.value.chapter_id 
           ? { ...c, chapter_name: updatedChapterName } 
           : c
       );
       
       // 发送更新事件
-      emit('update:course', { ...props.course, chapters: updatedChapters });
+      // emit('update:course', { ...course.value, chapters: updatedChapters });
+      course.value.chapters = updatedChapters; // 本地模拟更新
       
       // 更新当前选中的章节
       if (currentChapter.value && currentChapter.value.chapter_id === chapterModel.value.chapter_id) {
-        currentChapter.value = { ...currentChapter.value, chapter_name: updatedChapterName };
+        currentChapter.value.chapter_name = updatedChapterName;
       }
       
       ElMessage.success('章节更新成功');
     } else {
       // 新增章节
-      const nextNumber = getNextChapterNumber();
-      const finalChapterName = `第${nextNumber}章：${chapterModel.value.chapter_name.trim()}`;
-
-      // 创建新章节数据对象
       const newChapterData = {
+        ...chapterModel.value,
         chapter_id: Date.now(), // 生成唯一ID
-        chapter_name: finalChapterName,
-        course_id: props.course.id,
+        chapter_name: chapterModel.value.chapter_name.trim(),
+        sort_order: getNextChapterOrder(chapterModel.value.parent_id),
         resources: [] // 初始为空资源列表
       };
       
       console.log('新增章节', newChapterData);
       
       // 添加到章节数组
-      const updatedChapters = [...props.course.chapters, newChapterData];
+      const updatedChapters = [...course.value.chapters, newChapterData];
       
       // 发送更新事件
-      emit('update:course', { ...props.course, chapters: updatedChapters });
+      // emit('update:course', { ...course.value, chapters: updatedChapters });
+      course.value.chapters = updatedChapters;
       
       // 自动选中新创建的章节
       currentChapter.value = newChapterData;
@@ -548,17 +719,18 @@ const uploadResource = () => {
       };
       
       // 更新课程中的章节
-      const updatedChapters = props.course.chapters.map(chapter => 
+      const updatedChapters = course.value.chapters.map(chapter => 
         chapter.chapter_id === currentChapter.value.chapter_id ? updatedChapter : chapter
       );
       
       // 更新课程数据
       const updatedCourse = { 
-        ...props.course,
+        ...course.value,
         chapters: updatedChapters
       };
       
-      emit('update:course', updatedCourse);
+      // emit('update:course', updatedCourse);
+      course.value = updatedCourse;
       
       // 更新当前章节引用
       currentChapter.value = updatedChapter;
@@ -592,17 +764,18 @@ const deleteResource = (resource) => {
       };
       
       // 更新课程中的章节
-      const updatedChapters = props.course.chapters.map(chapter => 
+      const updatedChapters = course.value.chapters.map(chapter => 
         chapter.chapter_id === currentChapter.value.chapter_id ? updatedChapter : chapter
       );
       
       // 更新课程数据
       const updatedCourse = { 
-        ...props.course,
+        ...course.value,
         chapters: updatedChapters
       };
       
-      emit('update:course', updatedCourse);
+      // emit('update:course', updatedCourse);
+      course.value = updatedCourse;
       
       // 更新当前章节引用
       currentChapter.value = updatedChapter;
@@ -625,6 +798,10 @@ const formatFileSize = (size) => {
   } else {
     return (size / (1024 * 1024 * 1024)).toFixed(1) + 'GB';
   }
+};
+
+const showResourceList = () => {
+  ElMessage.info('正在为您展示资源列表。');
 };
 </script>
 
@@ -651,13 +828,25 @@ const formatFileSize = (size) => {
   justify-content: space-between;
   align-items: center;
   width: 100%;
+  overflow: hidden; /* 防止内容溢出容器 */
+}
+
+/* 新增：处理长标题样式 */
+.chapter-menu-item > span {
+  flex-grow: 1; /* 占据可用空间 */
+  white-space: nowrap; /* 不换行 */
+  overflow: hidden; /* 隐藏溢出部分 */
+  text-overflow: ellipsis; /* 显示省略号 */
+  padding-right: 8px; /* 与右侧按钮保持间距 */
 }
 
 .chapter-menu-item .actions {
   display: none;
+  flex-shrink: 0; /* 防止按钮组被压缩 */
 }
 
-.el-menu-item:hover .actions {
+.el-menu-item:hover .actions,
+.el-sub-menu__title:hover .actions {
   display: flex;
 }
 
@@ -672,6 +861,11 @@ const formatFileSize = (size) => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.header-actions {
+  display: flex;
+  gap: 10px;
 }
 
 .content-title {
