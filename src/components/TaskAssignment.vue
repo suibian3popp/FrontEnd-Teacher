@@ -53,6 +53,9 @@
               <el-button type="primary" link @click="viewDetails(item.id)">
                 <el-icon><View /></el-icon> 查看详情
               </el-button>
+              <el-button type="success" link @click="gradeAssignment(item.id)">
+                <el-icon><Check /></el-icon> 批改作业
+              </el-button>
               <el-button type="danger" link @click="deleteAssignment(item.id)">
                 <el-icon><Delete /></el-icon> 删除
               </el-button>
@@ -122,7 +125,7 @@
 import { ref, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
-import { Calendar, User, View, Delete, Search } from '@element-plus/icons-vue';
+import { Calendar, User, View, Delete, Search, Check } from '@element-plus/icons-vue';
 import CreateAssignmentForm from './common/CreateAssignmentForm.vue';
 
 const searchQuery = ref('');
@@ -391,6 +394,15 @@ const calculateTotalCount = (classList) => {
 
 const viewDetails = (id) => {
   router.push({ name: 'AssignmentDetail', params: { id } });
+};
+
+const gradeAssignment = (id) => {
+  // 跳转到作业详情页面并自动打开批改对话框
+  router.push({ 
+    name: 'AssignmentDetail', 
+    params: { id },
+    query: { action: 'grade' }
+  });
 };
 
 const deleteAssignment = (id) => {

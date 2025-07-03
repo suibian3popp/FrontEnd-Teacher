@@ -47,8 +47,8 @@
                 <el-table-column prop="studentId" label="学号"></el-table-column>
                 <el-table-column prop="submitTime" label="提交时间"></el-table-column>
                 <el-table-column label="操作">
-                  <template #default>
-                    <el-button type="primary" link>批改作业</el-button>
+                  <template #default="{ row }">
+                    <el-button type="primary" link @click="openGradeDialog(row)">批改作业</el-button>
                   </template>
                 </el-table-column>
               </el-table>
@@ -86,9 +86,10 @@
                 <el-table-column prop="studentName" label="学生姓名"></el-table-column>
                 <el-table-column prop="studentId" label="学号"></el-table-column>
                 <el-table-column prop="submitTime" label="提交时间"></el-table-column>
+                <el-table-column prop="score" label="得分"></el-table-column>
                 <el-table-column label="操作">
-                  <template #default>
-                    <el-button type="primary" link>查看批改</el-button>
+                  <template #default="{ row }">
+                    <el-button type="primary" link @click="viewGradeDetails(row)">查看批改</el-button>
                   </template>
                 </el-table-column>
               </el-table>
@@ -169,6 +170,42 @@
         </el-card>
       </div>
     </div>
+
+    <!-- 批改作业对话框 -->
+    <grade-assignment-dialog
+      v-model:visible="gradeDialogVisible"
+      :submission="currentSubmission"
+      :maxScore="assignment.score"
+      @graded="handleGraded"
+    />
+
+    <!-- 查看批改详情对话框 -->
+    <el-dialog
+      v-model="viewGradeDialogVisible"
+      title="批改详情"
+      width="50%"
+    >
+      <div v-if="currentSubmission">
+        <el-descriptions title="学生信息" :column="2" border>
+          <el-descriptions-item label="姓名">{{ currentSubmission.studentName }}</el-descriptions-item>
+          <el-descriptions-item label="学号">{{ currentSubmission.studentId }}</el-descriptions-item>
+          <el-descriptions-item label="提交时间">{{ currentSubmission.submitTime }}</el-descriptions-item>
+          <el-descriptions-item label="得分">
+            <span class="grade-score">{{ currentSubmission.score }}</span> / {{ assignment.score }}
+          </el-descriptions-item>
+        </el-descriptions>
+
+        <div class="grade-comment">
+          <h4>教师评语</h4>
+          <div class="comment-content">{{ currentSubmission.comment || '无评语' }}</div>
+        </div>
+      </div>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="viewGradeDialogVisible = false">关闭</el-button>
+        </span>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -180,6 +217,7 @@ import * as echarts from 'echarts/core';
 import { PieChart } from 'echarts/charts';
 import { TitleComponent, TooltipComponent, LegendComponent } from 'echarts/components';
 import { CanvasRenderer } from 'echarts/renderers';
+import GradeAssignmentDialog from '../components/common/GradeAssignmentDialog.vue';
 
 // 注册必需的组件
 echarts.use([
@@ -204,6 +242,11 @@ const assignment = ref({
   submissions: []
 });
 
+// 批改对话框相关
+const gradeDialogVisible = ref(false);
+const viewGradeDialogVisible = ref(false);
+const currentSubmission = ref(null);
+
 // 在实际项目中，这里会根据 route.params.id 调用 API 获取数据
 const fetchAssignmentDetail = (id) => {
   console.log('Fetching details for assignment ID:', id);
@@ -217,11 +260,11 @@ const fetchAssignmentDetail = (id) => {
     dueDate: '2024-08-15',
     score: 100,
     submissions: [
-      { studentName: '王晓明', studentId: '2021001', submitTime: '2024-08-14 10:30', status: '已批改' },
-      { studentName: '李静', studentId: '2021002', submitTime: '2024-08-14 11:15', status: '未批改' },
-      { studentName: '张三', studentId: '2021005', submitTime: '2024-08-15 11:00', status: '未批改' },
-      { studentName: '陈伟', studentId: '2021003', submitTime: '', status: '未提交' },
-      { studentName: '赵琳', studentId: '2021004', submitTime: '2024-08-15 09:00', status: '已批改' },
+      { id: 's1', studentName: '王晓明', studentId: '2021001', submitTime: '2024-08-14 10:30', status: '已批改', score: 92, comment: '报告结构清晰，内容完整，分析透彻，很好地完成了需求分析任务。' },
+      { id: 's2', studentName: '李静', studentId: '2021002', submitTime: '2024-08-14 11:15', status: '未批改' },
+      { id: 's3', studentName: '张三', studentId: '2021005', submitTime: '2024-08-15 11:00', status: '未批改' },
+      { id: 's4', studentName: '陈伟', studentId: '2021003', submitTime: '', status: '未提交' },
+      { id: 's5', studentName: '赵琳', studentId: '2021004', submitTime: '2024-08-15 09:00', status: '已批改', score: 88, comment: '整体表现良好，但需求分析部分可以更加详细。' },
     ]
   };
 };
@@ -404,6 +447,7 @@ const initPieChart = () => {
   pieChart.setOption(option);
 };
 
+// 提醒学生相关函数
 const remindStudent = (student) => {
   console.log('Reminding student:', student.studentName);
   ElMessage.success(`已发送提醒给 ${student.studentName}`);
@@ -438,6 +482,32 @@ const remindAllStudents = () => {
   });
 };
 
+// 批改作业相关函数
+const openGradeDialog = (submission) => {
+  currentSubmission.value = submission;
+  gradeDialogVisible.value = true;
+};
+
+const viewGradeDetails = (submission) => {
+  currentSubmission.value = submission;
+  viewGradeDialogVisible.value = true;
+};
+
+const handleGraded = (gradedSubmission) => {
+  // 更新作业状态
+  const index = assignment.value.submissions.findIndex(s => s.id === gradedSubmission.id);
+  if (index !== -1) {
+    assignment.value.submissions[index] = gradedSubmission;
+    
+    // 更新图表
+    if (pieChart) {
+      initPieChart();
+    }
+    
+    ElMessage.success('作业批改成功');
+  }
+};
+
 const goBack = () => {
   router.back();
 };
@@ -452,6 +522,17 @@ onMounted(() => {
     window.addEventListener('resize', () => {
       if (pieChart) pieChart.resize();
     });
+    
+    // 检查是否有批改请求
+    if (route.query.action === 'grade') {
+      // 找到第一个未批改的作业
+      const firstUngradedSubmission = ungradedSubmissions.value[0];
+      if (firstUngradedSubmission) {
+        openGradeDialog(firstUngradedSubmission);
+      } else {
+        ElMessage.info('没有需要批改的作业');
+      }
+    }
   });
 });
 </script>
@@ -627,4 +708,22 @@ onMounted(() => {
   margin-bottom: 10px;
   text-align: left;
 }
-</style> 
+
+.grade-score {
+  font-size: 18px;
+  font-weight: bold;
+  color: #409EFF;
+}
+
+.grade-comment {
+  margin-top: 20px;
+}
+
+.comment-content {
+  padding: 15px;
+  background-color: #f5f7fa;
+  border-radius: 4px;
+  min-height: 80px;
+  white-space: pre-line;
+}
+</style>
