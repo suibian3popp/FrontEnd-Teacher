@@ -3,6 +3,8 @@
   <head>
     <meta charset="UTF-8">
     <link rel="icon" href="/favicon.ico">
+      <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+      <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/webfonts/fa-solid-900.woff2" as="font" type="font/woff2" crossorigin>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Vite App</title>
   </head>
@@ -11,3 +13,28 @@
     <script type="module" src="/src/main.js"></script>
   </body>
 </html>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+    tailwind.config = {
+        theme: {
+            extend: {
+                colors: {
+                    primary: '#4F46E5',
+                    secondary: '#6B7280'
+                },
+                borderRadius: {
+                    'none': '0px',
+                    'sm': '2px',
+                    DEFAULT: '4px',
+                    'md': '8px',
+                    'lg': '12px',
+                    'xl': '16px',
+                    '2xl': '20px',
+                    '3xl': '24px',
+                    'full': '9999px',
+                    'button': '4px'
+                }
+            }
+        }
+    }
+</script>
