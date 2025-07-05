@@ -183,7 +183,7 @@
     <el-dialog
       v-model="viewGradeDialogVisible"
       title="批改详情"
-      width="50%"
+      width="60%"
     >
       <div v-if="currentSubmission">
         <el-descriptions title="学生信息" :column="2" border>
@@ -195,6 +195,50 @@
           </el-descriptions-item>
         </el-descriptions>
 
+        <!-- 作业内容 -->
+        <div class="assignment-submitted-content">
+          <h4>作业内容</h4>
+          
+          <!-- 文本内容部分 -->
+          <div v-if="currentSubmission.textContent" class="content-section">
+            <div class="section-title">
+              <span>文本内容</span>
+            </div>
+            <div class="text-preview">
+              <pre>{{ currentSubmission.textContent }}</pre>
+            </div>
+          </div>
+          
+          <!-- 附件部分 -->
+          <div v-if="currentSubmission.attachments && currentSubmission.attachments.length > 0" class="content-section">
+            <div class="section-title">
+              <span>附件列表</span>
+            </div>
+            <el-table :data="currentSubmission.attachments" style="width: 100%">
+              <el-table-column prop="name" label="文件名" />
+              <el-table-column prop="size" label="大小" width="120" />
+              <el-table-column prop="type" label="类型" width="120">
+                <template #default="{ row }">
+                  <el-tag :type="getFileTagType(row.type)">{{ row.type }}</el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column label="操作" width="150">
+                <template #default="{ row }">
+                  <el-button type="primary" link size="small" @click="downloadFile(row)">
+                    <el-icon><Download /></el-icon> 下载
+                  </el-button>
+                </template>
+              </el-table-column>
+            </el-table>
+          </div>
+          
+          <!-- 兼容旧数据 -->
+          <div v-if="!currentSubmission.textContent && !currentSubmission.attachments?.length && currentSubmission.content" class="content-preview">
+            <pre>{{ currentSubmission.content }}</pre>
+          </div>
+        </div>
+
+        <!-- 教师评语 -->
         <div class="grade-comment">
           <h4>教师评语</h4>
           <div class="comment-content">{{ currentSubmission.comment || '无评语' }}</div>
@@ -218,6 +262,7 @@ import { PieChart } from 'echarts/charts';
 import { TitleComponent, TooltipComponent, LegendComponent } from 'echarts/components';
 import { CanvasRenderer } from 'echarts/renderers';
 import GradeAssignmentDialog from '../components/common/GradeAssignmentDialog.vue';
+import { Download, View } from '@element-plus/icons-vue';
 
 // 注册必需的组件
 echarts.use([
@@ -489,7 +534,18 @@ const openGradeDialog = (submission) => {
 };
 
 const viewGradeDetails = (submission) => {
-  currentSubmission.value = submission;
+  currentSubmission.value = { ...submission };
+  
+  // 如果没有新格式的数据，添加模拟数据
+  if (!currentSubmission.value.textContent && !currentSubmission.value.attachments) {
+    currentSubmission.value.textContent = "这是学生提交的作业内容。\n\n软件工程需求分析报告\n\n按照要求，我完成了以下内容：\n1. 功能需求分析\n2. 系统架构设计\n3. 数据库设计\n\n总结：本次作业让我深入理解了软件工程的基本原理...";
+    
+    currentSubmission.value.attachments = [
+      { id: 1, name: "需求分析报告.pdf", size: "1.5MB", type: "PDF", url: "#" },
+      { id: 2, name: "系统架构图.jpg", size: "420KB", type: "图片", url: "#" },
+    ];
+  }
+  
   viewGradeDialogVisible.value = true;
 };
 
@@ -510,6 +566,27 @@ const handleGraded = (gradedSubmission) => {
 
 const goBack = () => {
   router.back();
+};
+
+// 获取文件类型的标签样式
+const getFileTagType = (fileType) => {
+  const typeMap = {
+    'PDF': 'danger',
+    'Word文档': 'primary',
+    'Excel表格': 'success',
+    'PPT演示文稿': 'warning',
+    '图片': 'info',
+    '压缩文件': 'default',
+    '文本文件': 'success',
+  };
+  return typeMap[fileType] || '';
+};
+
+// 下载文件
+const downloadFile = (file) => {
+  ElMessage.success(`开始下载: ${file.name}`);
+  // 实际项目中应调用后端API进行文件下载
+  console.log('下载文件:', file);
 };
 
 onMounted(() => {
@@ -712,18 +789,70 @@ onMounted(() => {
 .grade-score {
   font-size: 18px;
   font-weight: bold;
-  color: #409EFF;
+  color: #F56C6C;
 }
 
 .grade-comment {
   margin-top: 20px;
 }
 
-.comment-content {
-  padding: 15px;
-  background-color: #f5f7fa;
+.grade-comment .comment-content {
+  padding: 10px;
+  border: 1px solid #e0e0e0;
   border-radius: 4px;
-  min-height: 80px;
-  white-space: pre-line;
+  background-color: #f9f9f9;
+  min-height: 60px;
+}
+
+.assignment-submitted-content {
+  margin-top: 20px;
+  margin-bottom: 20px;
+}
+
+.assignment-submitted-content h4,
+.grade-comment h4 {
+  font-size: 16px;
+  margin-bottom: 10px;
+  border-bottom: 1px solid #e0e0e0;
+  padding-bottom: 5px;
+}
+
+.content-section {
+  margin-bottom: 20px;
+}
+
+.section-title {
+  font-weight: bold;
+  margin-bottom: 8px;
+  padding-bottom: 5px;
+  font-size: 14px;
+  color: #333;
+}
+
+.text-preview {
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  padding: 15px;
+  margin-top: 10px;
+  background-color: #f9f9f9;
+  min-height: 100px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.text-preview pre {
+  white-space: pre-wrap;
+  font-family: monospace;
+}
+
+.content-preview {
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  padding: 15px;
+  margin-top: 10px;
+  background-color: #f9f9f9;
+  min-height: 100px;
+  max-height: 200px;
+  overflow-y: auto;
 }
 </style>

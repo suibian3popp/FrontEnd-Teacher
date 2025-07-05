@@ -4,6 +4,9 @@ import { createRouter, createWebHistory } from 'vue-router'
 const Home = () => import('../views/Home.vue')
 const Dashboard = () => import('../components/Dashboard.vue')
 const CourseManagement = () => import('../views/CourseManagement.vue')
+const Login = () => import('../components/Login.vue')
+const ClassManagement = () => import('../views/ClassManagement.vue')
+const StudentManagement = () => import('../views/StudentManagement.vue')
 // 你可以根据实际情况添加其他页面组件
 // const Course = () => import('../views/Course.vue')
 // const Assignment = () => import('../views/Assignment.vue')
@@ -15,12 +18,18 @@ const CourseManagement = () => import('../views/CourseManagement.vue')
 
 const routes = [
   {
+    path: '/login',
+    name: 'login',
+    component: Login
+  },
+  {
     path: '/',
-    redirect: '/dashboard'
+    redirect: '/login'
   },
   {
     path: '/',
     component: Home,
+    meta: { requiresAuth: true },
     children: [
       {
         path: 'dashboard',
@@ -29,6 +38,10 @@ const routes = [
       {
         path: 'course',
         component: CourseManagement
+      },
+      {
+        path: 'class',
+        component: ClassManagement
       },
       {
         path: 'analytics',
@@ -46,6 +59,12 @@ const routes = [
         path: 'assignment/:id',
         name: 'AssignmentDetail',
         component: () => import('../views/AssignmentDetail.vue')
+      },
+      // 添加学生管理路由
+      {
+        path: 'students/:id',
+        name: 'StudentManagement',
+        component: StudentManagement
       },
       // 添加一个临时的资源路由，指向另一个组件，避免404错误
       {
@@ -89,6 +108,24 @@ const routes = [
 const router = createRouter({
   history: createWebHistory(),
   routes
+})
+
+// 添加路由守卫，处理身份验证
+router.beforeEach((to, from, next) => {
+  // 检查路由是否需要身份验证
+  if (to.matched.some(record => record.meta.requiresAuth)) {
+    // 从localStorage获取用户信息
+    const userStr = localStorage.getItem('user')
+    
+    // 如果没有用户信息，重定向到登录页面
+    if (!userStr) {
+      next({ path: '/login' })
+    } else {
+      next() // 允许访问
+    }
+  } else {
+    next() // 不需要验证的路由，直接放行
+  }
 })
 
 export default router

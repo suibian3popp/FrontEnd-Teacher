@@ -1,0 +1,70 @@
+Date : 2025-07-04 09:47:39
+Directory : d:\中南大学\25暑假实训\项目\FrontEnd-Teacher
+Total : 30 files,  8171 codes, 131 comments, 744 blanks, all 9046 lines
+
+Languages
++--------------------+------------+------------+------------+------------+------------+
+| language           | files      | code       | comment    | blank      | total      |
++--------------------+------------+------------+------------+------------+------------+
+| vue                |         16 |      4,018 |         75 |        516 |      4,609 |
+| JSON               |          2 |      3,373 |          0 |          2 |      3,375 |
+| Markdown           |          3 |        583 |          0 |        191 |        774 |
+| PostCSS            |          2 |         95 |         16 |         21 |        132 |
+| JavaScript         |          4 |         80 |         40 |         11 |        131 |
+| HTML               |          1 |         13 |          0 |          1 |         14 |
+| JSON with Comments |          1 |          8 |          0 |          1 |          9 |
+| XML                |          1 |          1 |          0 |          1 |          2 |
++--------------------+------------+------------+------------+------------+------------+
+
+Directories
++------------------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+| path                                                                               | files      | code       | comment    | blank      | total      |
++------------------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+| .                                                                                  |         30 |      8,171 |        131 |        744 |      9,046 |
+| . (Files)                                                                          |          9 |      3,997 |          1 |        198 |      4,196 |
+| src                                                                                |         21 |      4,174 |        130 |        546 |      4,850 |
+| src (Files)                                                                        |          2 |         22 |          0 |          5 |         27 |
+| src\assets                                                                         |          3 |         96 |         16 |         22 |        134 |
+| src\components                                                                     |         12 |      2,477 |         40 |        330 |      2,847 |
+| src\components (Files)                                                             |          9 |      1,866 |         36 |        257 |      2,159 |
+| src\components\common                                                              |          3 |        611 |          4 |         73 |        688 |
+| src\router                                                                         |          1 |         50 |         39 |          6 |         95 |
+| src\views                                                                          |          3 |      1,529 |         35 |        183 |      1,747 |
++------------------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+
+Files
++------------------------------------------------------------------------------------+--------------------+------------+------------+------------+------------+
+| filename                                                                           | language           | code       | comment    | blank      | total      |
++------------------------------------------------------------------------------------+--------------------+------------+------------+------------+------------+
+| d:\中南大学\25暑假实训\项目\FrontEnd-Teacher\README.md                                       | Markdown           |         18 |          0 |         12 |         30 |
+| d:\中南大学\25暑假实训\项目\FrontEnd-Teacher\index.html                                      | HTML               |         13 |          0 |          1 |         14 |
+| d:\中南大学\25暑假实训\项目\FrontEnd-Teacher\jsconfig.json                                   | JSON with Comments |          8 |          0 |          1 |          9 |
+| d:\中南大学\25暑假实训\项目\FrontEnd-Teacher\package-lock.json                               | JSON               |      3,348 |          0 |          1 |      3,349 |
+| d:\中南大学\25暑假实训\项目\FrontEnd-Teacher\package.json                                    | JSON               |         25 |          0 |          1 |         26 |
+| d:\中南大学\25暑假实训\项目\FrontEnd-Teacher\postcss.config.js                               | JavaScript         |          5 |          0 |          0 |          5 |
+| d:\中南大学\25暑假实训\项目\FrontEnd-Teacher\src\App.vue                                     | vue                |         12 |          0 |          3 |         15 |
+| d:\中南大学\25暑假实训\项目\FrontEnd-Teacher\src\assets\base.css                             | PostCSS            |         71 |          2 |         14 |         87 |
+| d:\中南大学\25暑假实训\项目\FrontEnd-Teacher\src\assets\logo.svg                             | XML                |          1 |          0 |          1 |          2 |
+| d:\中南大学\25暑假实训\项目\FrontEnd-Teacher\src\assets\main.css                             | PostCSS            |         24 |         14 |          7 |         45 |
+| d:\中南大学\25暑假实训\项目\FrontEnd-Teacher\src\components\Analytics.vue                    | vue                |        217 |          3 |         29 |        249 |
+| d:\中南大学\25暑假实训\项目\FrontEnd-Teacher\src\components\BarChart.vue                     | vue                |         30 |          0 |          3 |         33 |
+| d:\中南大学\25暑假实训\项目\FrontEnd-Teacher\src\components\CourseDetail.vue                 | vue                |        804 |         15 |        118 |        937 |
+| d:\中南大学\25暑假实训\项目\FrontEnd-Teacher\src\components\Dashboard.vue                    | vue                |        155 |          4 |         24 |        183 |
+| d:\中南大学\25暑假实训\项目\FrontEnd-Teacher\src\components\PieChart.vue                     | vue                |         29 |          0 |          3 |         32 |
+| d:\中南大学\25暑假实训\项目\FrontEnd-Teacher\src\components\Sidebar.vue                      | vue                |         63 |          7 |         10 |         80 |
+| d:\中南大学\25暑假实训\项目\FrontEnd-Teacher\src\components\TaskAssignment.vue               | vue                |        452 |          5 |         55 |        512 |
+| d:\中南大学\25暑假实训\项目\FrontEnd-Teacher\src\components\TaskExam.vue                     | vue                |         94 |          2 |         13 |        109 |
+| d:\中南大学\25暑假实训\项目\FrontEnd-Teacher\src\components\TodoList.vue                     | vue                |         22 |          0 |          2 |         24 |
+| d:\中南大学\25暑假实训\项目\FrontEnd-Teacher\src\components\common\CreateAssignmentForm.vue  | vue                |        313 |          1 |         32 |        346 |
+| d:\中南大学\25暑假实训\项目\FrontEnd-Teacher\src\components\common\GradeAssignmentDialog.vue | vue                |        253 |          3 |         34 |        290 |
+| d:\中南大学\25暑假实训\项目\FrontEnd-Teacher\src\components\common\MainHeader.vue            | vue                |         45 |          0 |          7 |         52 |
+| d:\中南大学\25暑假实训\项目\FrontEnd-Teacher\src\main.js                                     | JavaScript         |         10 |          0 |          2 |         12 |
+| d:\中南大学\25暑假实训\项目\FrontEnd-Teacher\src\router\index.js                             | JavaScript         |         50 |         39 |          6 |         95 |
+| d:\中南大学\25暑假实训\项目\FrontEnd-Teacher\src\views\AssignmentDetail.vue                  | vue                |        627 |         11 |         91 |        729 |
+| d:\中南大学\25暑假实训\项目\FrontEnd-Teacher\src\views\CourseManagement.vue                  | vue                |        884 |         24 |         90 |        998 |
+| d:\中南大学\25暑假实训\项目\FrontEnd-Teacher\src\views\Home.vue                              | vue                |         18 |          0 |          2 |         20 |
+| d:\中南大学\25暑假实训\项目\FrontEnd-Teacher\vite.config.js                                  | JavaScript         |         15 |          1 |          3 |         19 |
+| d:\中南大学\25暑假实训\项目\FrontEnd-Teacher\智慧教学支持平台 - 教师中心 API 文档.md                       | Markdown           |        198 |          0 |         31 |        229 |
+| d:\中南大学\25暑假实训\项目\FrontEnd-Teacher\智慧教学支持平台 - 教师端需求文档.md                           | Markdown           |        367 |          0 |        148 |        515 |
+| Total                                                                              |                    |      8,171 |        131 |        744 |      9,046 |
++------------------------------------------------------------------------------------+--------------------+------------+------------+------------+------------+

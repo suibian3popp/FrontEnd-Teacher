@@ -1,12 +1,11 @@
 <script setup>
-import Login from './components/Login.vue'
+// 不再直接导入Login组件
 </script>
 
 <template>
   <!-- 此div将替换HTML中的<div id="app">内容 -->
   <div class="global-bg-container">
-    <Login />
-    <!-- 未来其他页面通过<router-view>切换 -->
+    <router-view />
   </div>
 </template>
 

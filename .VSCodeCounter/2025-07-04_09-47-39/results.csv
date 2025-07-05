@@ -1,0 +1,32 @@
+"filename", "language", "JSON with Comments", "JavaScript", "vue", "JSON", "HTML", "Markdown", "PostCSS", "XML", "comment", "blank", "total"
+"d:\中南大学\25暑假实训\项目\FrontEnd-Teacher\README.md", "Markdown", 0, 0, 0, 0, 0, 18, 0, 0, 0, 12, 30
+"d:\中南大学\25暑假实训\项目\FrontEnd-Teacher\index.html", "HTML", 0, 0, 0, 0, 13, 0, 0, 0, 0, 1, 14
+"d:\中南大学\25暑假实训\项目\FrontEnd-Teacher\jsconfig.json", "JSON with Comments", 8, 0, 0, 0, 0, 0, 0, 0, 0, 1, 9
+"d:\中南大学\25暑假实训\项目\FrontEnd-Teacher\package-lock.json", "JSON", 0, 0, 0, 3348, 0, 0, 0, 0, 0, 1, 3349
+"d:\中南大学\25暑假实训\项目\FrontEnd-Teacher\package.json", "JSON", 0, 0, 0, 25, 0, 0, 0, 0, 0, 1, 26
+"d:\中南大学\25暑假实训\项目\FrontEnd-Teacher\postcss.config.js", "JavaScript", 0, 5, 0, 0, 0, 0, 0, 0, 0, 0, 5
+"d:\中南大学\25暑假实训\项目\FrontEnd-Teacher\src\App.vue", "vue", 0, 0, 12, 0, 0, 0, 0, 0, 0, 3, 15
+"d:\中南大学\25暑假实训\项目\FrontEnd-Teacher\src\assets\base.css", "PostCSS", 0, 0, 0, 0, 0, 0, 71, 0, 2, 14, 87
+"d:\中南大学\25暑假实训\项目\FrontEnd-Teacher\src\assets\logo.svg", "XML", 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 2
+"d:\中南大学\25暑假实训\项目\FrontEnd-Teacher\src\assets\main.css", "PostCSS", 0, 0, 0, 0, 0, 0, 24, 0, 14, 7, 45
+"d:\中南大学\25暑假实训\项目\FrontEnd-Teacher\src\components\Analytics.vue", "vue", 0, 0, 217, 0, 0, 0, 0, 0, 3, 29, 249
+"d:\中南大学\25暑假实训\项目\FrontEnd-Teacher\src\components\BarChart.vue", "vue", 0, 0, 30, 0, 0, 0, 0, 0, 0, 3, 33
+"d:\中南大学\25暑假实训\项目\FrontEnd-Teacher\src\components\CourseDetail.vue", "vue", 0, 0, 804, 0, 0, 0, 0, 0, 15, 118, 937
+"d:\中南大学\25暑假实训\项目\FrontEnd-Teacher\src\components\Dashboard.vue", "vue", 0, 0, 155, 0, 0, 0, 0, 0, 4, 24, 183
+"d:\中南大学\25暑假实训\项目\FrontEnd-Teacher\src\components\PieChart.vue", "vue", 0, 0, 29, 0, 0, 0, 0, 0, 0, 3, 32
+"d:\中南大学\25暑假实训\项目\FrontEnd-Teacher\src\components\Sidebar.vue", "vue", 0, 0, 63, 0, 0, 0, 0, 0, 7, 10, 80
+"d:\中南大学\25暑假实训\项目\FrontEnd-Teacher\src\components\TaskAssignment.vue", "vue", 0, 0, 452, 0, 0, 0, 0, 0, 5, 55, 512
+"d:\中南大学\25暑假实训\项目\FrontEnd-Teacher\src\components\TaskExam.vue", "vue", 0, 0, 94, 0, 0, 0, 0, 0, 2, 13, 109
+"d:\中南大学\25暑假实训\项目\FrontEnd-Teacher\src\components\TodoList.vue", "vue", 0, 0, 22, 0, 0, 0, 0, 0, 0, 2, 24
+"d:\中南大学\25暑假实训\项目\FrontEnd-Teacher\src\components\common\CreateAssignmentForm.vue", "vue", 0, 0, 313, 0, 0, 0, 0, 0, 1, 32, 346
+"d:\中南大学\25暑假实训\项目\FrontEnd-Teacher\src\components\common\GradeAssignmentDialog.vue", "vue", 0, 0, 253, 0, 0, 0, 0, 0, 3, 34, 290
+"d:\中南大学\25暑假实训\项目\FrontEnd-Teacher\src\components\common\MainHeader.vue", "vue", 0, 0, 45, 0, 0, 0, 0, 0, 0, 7, 52
+"d:\中南大学\25暑假实训\项目\FrontEnd-Teacher\src\main.js", "JavaScript", 0, 10, 0, 0, 0, 0, 0, 0, 0, 2, 12
+"d:\中南大学\25暑假实训\项目\FrontEnd-Teacher\src\router\index.js", "JavaScript", 0, 50, 0, 0, 0, 0, 0, 0, 39, 6, 95
+"d:\中南大学\25暑假实训\项目\FrontEnd-Teacher\src\views\AssignmentDetail.vue", "vue", 0, 0, 627, 0, 0, 0, 0, 0, 11, 91, 729
+"d:\中南大学\25暑假实训\项目\FrontEnd-Teacher\src\views\CourseManagement.vue", "vue", 0, 0, 884, 0, 0, 0, 0, 0, 24, 90, 998
+"d:\中南大学\25暑假实训\项目\FrontEnd-Teacher\src\views\Home.vue", "vue", 0, 0, 18, 0, 0, 0, 0, 0, 0, 2, 20
+"d:\中南大学\25暑假实训\项目\FrontEnd-Teacher\vite.config.js", "JavaScript", 0, 15, 0, 0, 0, 0, 0, 0, 1, 3, 19
+"d:\中南大学\25暑假实训\项目\FrontEnd-Teacher\智慧教学支持平台 - 教师中心 API 文档.md", "Markdown", 0, 0, 0, 0, 0, 198, 0, 0, 0, 31, 229
+"d:\中南大学\25暑假实训\项目\FrontEnd-Teacher\智慧教学支持平台 - 教师端需求文档.md", "Markdown", 0, 0, 0, 0, 0, 367, 0, 0, 0, 148, 515
+"Total", "-", 8, 80, 4018, 3373, 13, 583, 95, 1, 131, 744, 9046

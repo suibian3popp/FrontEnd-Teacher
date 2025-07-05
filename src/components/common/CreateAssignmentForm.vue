@@ -41,6 +41,14 @@
       <el-form-item label="总分数" prop="score">
         <el-input-number v-model="form.score" :min="1" :max="150" />
       </el-form-item>
+      <el-form-item label="作业描述" prop="description">
+        <el-input
+          v-model="form.description"
+          type="textarea"
+          :rows="4"
+          placeholder="请输入作业描述内容"
+        />
+      </el-form-item>
       <el-form-item label="作业附件" prop="fileList">
         <div class="attachment-options">
           <div class="upload-option">
@@ -138,6 +146,7 @@
     class: [],
     dates: [],
     score: 100,
+    description: '',
     fileList: [],
     selectedResource: null, // 新增：存储选中的资源
   });
@@ -231,6 +240,9 @@
       // 设置分数
       form.value.score = newData.score || 100;
       
+      // 设置描述
+      form.value.description = newData.description || '';
+      
       // 更新旧班级选择，以便全选功能正常工作
       oldSelectedClasses = [...form.value.class];
     } else {
@@ -241,6 +253,7 @@
         class: [], 
         dates: [], 
         score: 100, 
+        description: '',
         fileList: [],
         selectedResource: null 
       };

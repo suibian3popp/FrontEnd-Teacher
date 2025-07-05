@@ -20,13 +20,10 @@
         </el-menu-item>
         
         <!-- 班级管理 -->
-        <el-sub-menu index="class-management">
-          <template #title>
-            <el-icon><User /></el-icon>
-            <span>班级管理</span>
-          </template>
-          <el-menu-item v-for="item in classes" :key="item" :index="`/class-management/${item}`">{{ item }}</el-menu-item>
-        </el-sub-menu>
+        <el-menu-item index="/class">
+          <el-icon><User /></el-icon>
+          <span>班级管理</span>
+        </el-menu-item>
 
         <!-- 学情分析 -->
         <el-menu-item index="/analytics">
@@ -69,8 +66,6 @@
 
   // 首页是默认激活的菜单
   const activeMenu = ref('/dashboard')
-  // 示例班级数据，将来可以从 API 获取
-  const classes = ref(['软件工程2101', '计算机2102', '人工智能2103'])
   </script>
 
   <style scoped>

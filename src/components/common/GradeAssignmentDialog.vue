@@ -16,7 +16,47 @@
       <!-- 作业内容 -->
       <div class="assignment-content">
         <h3>作业内容</h3>
-        <div class="content-preview">
+        
+        <!-- 文本内容部分 -->
+        <div v-if="submission.textContent" class="content-section">
+          <div class="section-title">
+            <span>文本内容</span>
+          </div>
+          <div class="text-preview content-preview">
+            <pre>{{ submission.textContent }}</pre>
+          </div>
+        </div>
+        
+        <!-- 附件部分 -->
+        <div v-if="submission.attachments && submission.attachments.length > 0" class="content-section">
+          <div class="section-title">
+            <span>附件列表</span>
+          </div>
+          <div class="attachments-list">
+            <el-table :data="submission.attachments" style="width: 100%">
+              <el-table-column prop="name" label="文件名" />
+              <el-table-column prop="size" label="大小" width="120" />
+              <el-table-column prop="type" label="类型" width="120">
+                <template #default="{ row }">
+                  <el-tag :type="getFileTagType(row.type)">{{ row.type }}</el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column label="操作" width="150">
+                <template #default="{ row }">
+                  <el-button type="primary" link size="small" @click="downloadFile(row)">
+                    <el-icon><Download /></el-icon> 下载
+                  </el-button>
+                  <el-button type="info" link size="small" v-if="canPreview(row.type)" @click="previewFile(row)">
+                    <el-icon><View /></el-icon> 预览
+                  </el-button>
+                </template>
+              </el-table-column>
+            </el-table>
+          </div>
+        </div>
+        
+        <!-- 传统内容预览(兼容旧数据) -->
+        <div v-if="!submission.textContent && !submission.attachments?.length && submission.content" class="content-preview">
           <template v-if="submission.fileType === 'pdf'">
             <div class="pdf-preview">
               <p>PDF文件预览 (实际项目中接入PDF预览组件)</p>
@@ -102,6 +142,7 @@
 <script setup>
 import { ref, computed, watch, reactive } from 'vue';
 import { ElMessage } from 'element-plus';
+import { Download, View } from '@element-plus/icons-vue';
 
 const props = defineProps({
   visible: {
@@ -169,13 +210,53 @@ const loadSubmissionContent = () => {
   // 模拟API调用，加载作业内容
   setTimeout(() => {
     // 在实际项目中，这里会调用API获取作业内容
-    if (!props.submission.content) {
-      props.submission.content = "这是模拟的作业内容，实际项目中应该从后端API获取。\n\n软件工程需求分析报告\n\n1. 引言\n本文档描述了XX系统的需求分析...\n\n2. 功能需求\n2.1 用户管理\n系统应支持用户注册、登录...\n\n3. 非功能需求\n系统应具有良好的可用性和性能...";
-      props.submission.fileType = 'text';
+    if (!props.submission.content && !props.submission.textContent) {
+      // 添加模拟数据，包括文本内容和附件
+      props.submission.textContent = "这是学生提交的作业文本内容\n\n软件工程需求分析报告\n\n1. 引言\n本文档描述了XX系统的需求分析...\n\n2. 功能需求\n2.1 用户管理\n系统应支持用户注册、登录...\n\n3. 非功能需求\n系统应具有良好的可用性和性能...";
+      
+      props.submission.attachments = [
+        { id: 1, name: "需求文档.pdf", size: "1.2MB", type: "PDF", url: "#" },
+        { id: 2, name: "系统设计图.png", size: "540KB", type: "图片", url: "#" },
+        { id: 3, name: "源代码.zip", size: "3.5MB", type: "压缩文件", url: "#" },
+      ];
     }
     
     loading.value = false;
   }, 500);
+};
+
+// 获取文件类型的标签样式
+const getFileTagType = (fileType) => {
+  const typeMap = {
+    'PDF': 'danger',
+    'Word文档': 'primary',
+    'Excel表格': 'success',
+    'PPT演示文稿': 'warning',
+    '图片': 'info',
+    '压缩文件': 'default',
+    '文本文件': 'success',
+  };
+  return typeMap[fileType] || '';
+};
+
+// 判断文件是否可以预览
+const canPreview = (fileType) => {
+  const previewableTypes = ['PDF', '图片', '文本文件'];
+  return previewableTypes.includes(fileType);
+};
+
+// 下载文件
+const downloadFile = (file) => {
+  ElMessage.success(`开始下载: ${file.name}`);
+  // 实际项目中应调用后端API进行文件下载
+  console.log('下载文件:', file);
+};
+
+// 预览文件
+const previewFile = (file) => {
+  ElMessage.info(`预览文件: ${file.name}`);
+  // 实际项目中可以使用相应的预览组件或打开新窗口预览
+  console.log('预览文件:', file);
 };
 
 // 提交批改
@@ -286,5 +367,24 @@ watch(
 
 .grade-details {
   margin-top: 10px;
+}
+
+.content-section {
+  margin-bottom: 20px;
+}
+
+.section-title {
+  font-weight: bold;
+  margin-bottom: 8px;
+  padding-bottom: 5px;
+  border-bottom: 1px solid #e0e0e0;
+  font-size: 16px;
+  color: #333;
+}
+
+.attachments-list {
+  background: white;
+  border-radius: 4px;
+  padding: 5px;
 }
 </style> 

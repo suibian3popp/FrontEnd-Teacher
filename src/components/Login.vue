@@ -1,132 +1,102 @@
 <template>
-  <div class="min-h-screen w-full flex items-center justify-center bg-transparent">
-    <div class="w-[480px] bg-white/95 backdrop-blur-sm shadow-xl rounded-xl p-8">
-      <!-- logo -->
-      <div class="font-['Pacifico'] text-3xl text-center mb-8 text-primary">logo</div>
-
-      <!-- 内容 -->
-      <div class="flex mb-6">
-        <button class="flex-1 py-2 border-b-2 !rounded-button whitespace-nowrap"
-                :class="{ 'text-primary border-primary': activeTab === 'login', 'text-gray-500 border-gray-200': activeTab === 'register' }"
-                @click="activeTab = 'login'">登录</button>
-        <button class="flex-1 py-2 border-b-2 !rounded-button whitespace-nowrap"
-                :class="{ 'text-primary border-primary': activeTab === 'register', 'text-gray-500 border-gray-200': activeTab === 'login' }"
-                @click="activeTab = 'register'">注册</button>
-      </div>
-
-      <div v-if="activeTab === 'login'" class="space-y-6">
-        <div class="relative">
-          <i class="fas fa-user absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
-          <input v-model="loginForm.username" type="text" placeholder="请输入账号"
-                 class="w-full pl-10 pr-4 py-3 border rounded-button focus:outline-none"
-                 :class="{'border-gray-200': !loginErrors.username, 'border-red-500': loginErrors.username}">
-          <span v-if="loginErrors.username" class="absolute left-0 -bottom-5 text-xs text-red-500">{{ loginErrors.username }}</span>
-        </div>
-
-        <div class="relative">
-          <i class="fas fa-lock absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
-          <input v-model="loginForm.password" :type="showLoginPassword ? 'text' : 'password'" placeholder="请输入密码"
-                 class="w-full pl-10 pr-4 py-3 border rounded-button focus:outline-none"
-                 :class="{'border-gray-200': !loginErrors.password, 'border-red-500': loginErrors.password}">
-          <button class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-primary !rounded-button whitespace-nowrap"
-                  @click="showLoginPassword = !showLoginPassword">
-            <i :class="showLoginPassword ? 'far fa-eye-slash' : 'far fa-eye'"></i>
-          </button>
-          <span v-if="loginErrors.password" class="absolute left-0 -bottom-5 text-xs text-red-500">{{ loginErrors.password }}</span>
-        </div>
-
-        <div class="flex justify-between items-center">
-          <label class="flex items-center">
-            <input v-model="loginForm.remember" type="checkbox"
-                   class="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary">
-            <span class="ml-2 text-sm text-gray-600">记住密码</span>
-          </label>
-          <a href="#" class="text-sm text-primary hover:text-primary/80">忘记密码？</a>
-        </div>
-
-        <!-- 登录按钮 -->
-        <button @click="handleLogin"
-                class="w-full py-3 bg-primary text-white font-medium !rounded-button hover:bg-primary/90 transition-colors whitespace-nowrap">
-          登录
-        </button>
-      </div>
-
-      <div v-else class="space-y-6">
-        <div v-for="(field, index) in registerFields" :key="index" class="relative">
-          <i :class="field.icon" class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
-          <template v-if="field.type === 'select'">
-            <div class="relative">
-              <button :id="field.id" class="w-full pl-10 pr-4 py-3 border rounded-button focus:outline-none text-left bg-white whitespace-nowrap"
-                      :class="{'border-gray-200': !registerErrors.role, 'border-red-500': registerErrors.role}"
-                      @click="toggleDropdown">
-                {{ registerForm.role || '请选择角色' }}
-              </button>
-              <i class="fas fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
-              <span v-if="field.required" class="absolute -top-2 left-2 text-red-500 text-xs">*</span>
-              <div v-show="showRoleDropdown" class="absolute w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg z-10">
-                <div v-for="role in roles" :key="role"
-                     class="py-2 px-4 hover:bg-gray-50 cursor-pointer"
-                     @click="selectRole(role)">
-                  {{ role }}
-                </div>
-              </div>
-              <span v-if="registerErrors.role" class="absolute left-0 -bottom-5 text-xs text-red-500">{{ registerErrors.role }}</span>
+  <div class="login-container">
+    <el-card class="login-card" shadow="always">
+      <!-- 标题/Logo -->
+      <div class="login-logo">智慧教学支持平台</div>
+      
+      <!-- 切换登录/注册标签 -->
+      <el-tabs v-model="activeTab" class="login-tabs">
+        <el-tab-pane label="登录" name="login">
+          <el-form :model="loginForm" :rules="loginRules" ref="loginFormRef" label-position="top">
+            <el-form-item label="用户名" prop="username">
+              <el-input v-model="loginForm.username" placeholder="请输入用户名" prefix-icon="User" />
+            </el-form-item>
+            
+            <el-form-item label="密码" prop="password">
+              <el-input v-model="loginForm.password" :type="showLoginPassword ? 'text' : 'password'" 
+                        placeholder="请输入密码" prefix-icon="Lock" show-password />
+            </el-form-item>
+            
+            <div class="login-options">
+              <el-checkbox v-model="loginForm.remember">记住密码</el-checkbox>
+              <el-button text type="primary">忘记密码？</el-button>
             </div>
-          </template>
-          <template v-else>
-            <input v-model="registerForm[field.name]"
-                   :type="field.type === 'password' && !field.show ? 'password' : 'text'"
-                   :placeholder="field.placeholder"
-                   @input="clearError(field.name)"
-                   @blur="validateField(field.name)"
-                   class="w-full pl-10 pr-4 py-3 border rounded-button focus:outline-none"
-                   :class="{'border-gray-200': !registerErrors[field.name], 'border-red-500': registerErrors[field.name]}">
-            <span v-if="field.required" class="absolute -top-2 left-2 text-red-500 text-xs">*</span>
-            <button v-if="field.type === 'password'"
-                    class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-primary !rounded-button whitespace-nowrap"
-                    @click="field.show = !field.show">
-              <i :class="field.show ? 'far fa-eye-slash' : 'far fa-eye'"></i>
-            </button>
-            <!-- 密码不一致的错误提示只显示在确认密码框下面 -->
-            <span v-if="registerErrors[field.name] && field.name !== 'confirmPassword'"
-                  class="absolute left-0 -bottom-5 text-xs text-red-500">{{ registerErrors[field.name] }}</span>
-            <span v-if="field.name === 'confirmPassword' && passwordMismatch"
-                  class="absolute left-0 -bottom-5 text-xs text-red-500">两次密码不一致</span>
-          </template>
-        </div>
-
-        <!-- 注册按钮 -->
-        <button @click="handleRegister"
-                class="w-full py-3 bg-primary text-white font-medium !rounded-button hover:bg-primary/90 transition-colors whitespace-nowrap">
-          注册
-        </button>
-      </div>
-    </div>
+            
+            <el-button type="primary" :loading="loading" class="login-button" @click="handleLogin">登录</el-button>
+            
+            <!-- 测试用户按钮 -->
+            <div class="demo-user">
+              <el-button link type="info" @click="useTestAccount">使用测试账号</el-button>
+            </div>
+          </el-form>
+        </el-tab-pane>
+        
+        <el-tab-pane label="注册" name="register">
+          <el-form :model="registerForm" :rules="registerRules" ref="registerFormRef" label-position="top">
+            <el-form-item label="用户名" prop="username">
+              <el-input v-model="registerForm.username" placeholder="请输入用户名" prefix-icon="User" />
+            </el-form-item>
+            
+            <el-form-item label="真实姓名" prop="realName">
+              <el-input v-model="registerForm.realName" placeholder="请输入真实姓名" prefix-icon="User" />
+            </el-form-item>
+            
+            <el-form-item label="邮箱" prop="email">
+              <el-input v-model="registerForm.email" placeholder="请输入邮箱" prefix-icon="Message" />
+            </el-form-item>
+            
+            <el-form-item label="电话号码" prop="phone">
+              <el-input v-model="registerForm.phone" placeholder="请输入电话号码（选填）" prefix-icon="Phone" />
+            </el-form-item>
+            
+            <el-form-item label="密码" prop="password">
+              <el-input v-model="registerForm.password" type="password" 
+                        placeholder="请输入密码" prefix-icon="Lock" show-password />
+            </el-form-item>
+            
+            <el-form-item label="确认密码" prop="confirmPassword">
+              <el-input v-model="registerForm.confirmPassword" type="password" 
+                        placeholder="请确认密码" prefix-icon="Lock" show-password />
+            </el-form-item>
+            
+            <el-form-item label="角色" prop="role">
+              <el-select v-model="registerForm.role" placeholder="请选择角色" class="register-select">
+                <el-option v-for="role in roles" :key="role" :label="role" :value="role" />
+              </el-select>
+            </el-form-item>
+            
+            <el-button type="primary" :loading="loading" class="login-button" @click="handleRegister">注册</el-button>
+          </el-form>
+        </el-tab-pane>
+      </el-tabs>
+    </el-card>
   </div>
 </template>
 
-<script lang="ts" setup>
-import { ref, computed, onMounted } from 'vue';
+<script setup>
+import { ref, reactive, onMounted } from 'vue'
+import { ElMessage, ElLoading } from 'element-plus'
+import { User, Lock, Message, Phone } from '@element-plus/icons-vue'
+import { useRouter } from 'vue-router'
 
-const activeTab = ref('login');
-const showLoginPassword = ref(false);
-const showRoleDropdown = ref(false);
+const router = useRouter()
+const activeTab = ref('login')
+const showLoginPassword = ref(false)
+const loading = ref(false)
+
+// 表单引用
+const loginFormRef = ref(null)
+const registerFormRef = ref(null)
 
 // 登录表单
-const loginForm = ref({
+const loginForm = reactive({
   username: '',
   password: '',
   remember: false
-});
-
-// 登录表单错误
-const loginErrors = ref({
-  username: '',
-  password: ''
-});
+})
 
 // 注册表单
-const registerForm = ref({
+const registerForm = reactive({
   username: '',
   realName: '',
   email: '',
@@ -134,204 +104,205 @@ const registerForm = ref({
   password: '',
   confirmPassword: '',
   role: ''
-});
+})
 
-// 注册表单错误
-const registerErrors = ref({
-  username: '',
-  realName: '',
-  email: '',
-  phone: '',
-  password: '',
-  confirmPassword: '',
-  role: ''
-});
+const roles = ['院系管理员', '教师', '助教']
 
-const roles = ['院系管理员', '教师', '助教'];
+// 验证规则
+const loginRules = {
+  username: [
+    { required: true, message: '请输入用户名', trigger: 'blur' },
+  ],
+  password: [
+    { required: true, message: '请输入密码', trigger: 'blur' },
+    { min: 6, message: '密码不能少于6位', trigger: 'blur' }
+  ]
+}
 
-// 注册字段配置
-const registerFields = ref([
-  { name: 'username', type: 'text', icon: 'fas fa-user', placeholder: '请输入用户名', required: true },
-  { name: 'realName', type: 'text', icon: 'fas fa-id-card', placeholder: '请输入真实姓名', required: true },
-  { name: 'email', type: 'email', icon: 'fas fa-envelope', placeholder: '请输入邮箱', required: true },
-  { name: 'phone', type: 'tel', icon: 'fas fa-phone', placeholder: '请输入电话号码（选填）' },
-  { name: 'password', type: 'password', icon: 'fas fa-lock', placeholder: '请输入密码', required: true, show: false },
-  { name: 'confirmPassword', type: 'password', icon: 'fas fa-lock', placeholder: '请确认密码', required: true, show: false },
-  { name: 'role', type: 'select', icon: 'fas fa-user-tag', id: 'roleSelect', placeholder: '请选择角色', required: true }
-]);
-
-// 计算属性：检查密码是否一致
-const passwordMismatch = computed(() => {
-  return registerForm.value.password &&
-      registerForm.value.confirmPassword &&
-      registerForm.value.password !== registerForm.value.confirmPassword;
-});
-
-// 清除错误
-const clearError = (fieldName: string) => {
-  if (registerForm.value[fieldName as keyof typeof registerForm.value]) {
-    registerErrors.value[fieldName as keyof typeof registerErrors.value] = '';
-  }
-
-  // 特殊处理密码确认框
-  if (fieldName === 'password' || fieldName === 'confirmPassword') {
-    if (registerForm.value.password && registerForm.value.confirmPassword) {
-      if (registerForm.value.password === registerForm.value.confirmPassword) {
-        registerErrors.value.confirmPassword = '';
-      }
-    }
-  }
-};
-
-// 验证单个字段
-const validateField = (fieldName: string) => {
-  if (!registerForm.value[fieldName as keyof typeof registerForm.value] &&
-      registerFields.value.find(f => f.name === fieldName)?.required) {
-    registerErrors.value[fieldName as keyof typeof registerErrors.value] = `${registerFields.value.find(f => f.name === fieldName)?.placeholder}不能为空`;
-    return;
-  }
-
-  switch (fieldName) {
-    case 'email':
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(registerForm.value.email)) {
-        registerErrors.value.email = '请输入有效的邮箱地址';
-      } else {
-        registerErrors.value.email = '';
-      }
-      break;
-    case 'phone':
-      if (registerForm.value.phone) {
-        const phoneRegex = /^1[3-9]\d{9}$/;
-        if (!phoneRegex.test(registerForm.value.phone)) {
-          registerErrors.value.phone = '请输入有效的手机号码';
-        } else {
-          registerErrors.value.phone = '';
-        }
-      }
-      break;
-    case 'confirmPassword':
-      if (registerForm.value.password !== registerForm.value.confirmPassword) {
-        registerErrors.value.confirmPassword = '两次密码不一致';
-      } else {
-        registerErrors.value.confirmPassword = '';
-      }
-      break;
-    default:
-      if (registerForm.value[fieldName as keyof typeof registerForm.value]) {
-        registerErrors.value[fieldName as keyof typeof registerErrors.value] = '';
-      }
-      break;
-  }
-};
-
-// 验证登录表单
-const validateLoginForm = () => {
-  let isValid = true;
-
-  if (!loginForm.value.username) {
-    loginErrors.value.username = '用户名不能为空';
-    isValid = false;
+// 密码匹配验证器
+const validateConfirmPassword = (rule, value, callback) => {
+  if (value === '') {
+    callback(new Error('请再次输入密码'))
+  } else if (value !== registerForm.password) {
+    callback(new Error('两次输入密码不一致'))
   } else {
-    loginErrors.value.username = '';
+    callback()
   }
+}
 
-  if (!loginForm.value.password) {
-    loginErrors.value.password = '密码不能为空';
-    isValid = false;
+// 邮箱验证
+const validateEmail = (rule, value, callback) => {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  if (value === '') {
+    callback(new Error('请输入邮箱'))
+  } else if (!emailRegex.test(value)) {
+    callback(new Error('请输入有效的邮箱地址'))
   } else {
-    loginErrors.value.password = '';
+    callback()
   }
+}
 
-  return isValid;
-};
-
-// 验证注册表单
-const validateRegisterForm = () => {
-  let isValid = true;
-
-  // 验证必填字段
-  registerFields.value.forEach(field => {
-    if (field.required && !registerForm.value[field.name as keyof typeof registerForm.value]) {
-      registerErrors.value[field.name as keyof typeof registerErrors.value] = `${field.placeholder}不能为空`;
-      isValid = false;
-    }
-  });
-
-  // 验证邮箱格式
-  if (registerForm.value.email) {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(registerForm.value.email)) {
-      registerErrors.value.email = '请输入有效的邮箱地址';
-      isValid = false;
+// 手机号验证
+const validatePhone = (rule, value, callback) => {
+  if (value === '') {
+    callback() // 手机号可选
+  } else {
+    const phoneRegex = /^1[3-9]\d{9}$/
+    if (!phoneRegex.test(value)) {
+      callback(new Error('请输入有效的手机号码'))
+    } else {
+      callback()
     }
   }
+}
 
-  // 验证手机号格式
-  if (registerForm.value.phone) {
-    const phoneRegex = /^1[3-9]\d{9}$/;
-    if (!phoneRegex.test(registerForm.value.phone)) {
-      registerErrors.value.phone = '请输入有效的手机号码';
-      isValid = false;
-    }
+const registerRules = {
+  username: [
+    { required: true, message: '请输入用户名', trigger: 'blur' },
+    { min: 3, message: '用户名至少需要3个字符', trigger: 'blur' }
+  ],
+  realName: [
+    { required: true, message: '请输入真实姓名', trigger: 'blur' }
+  ],
+  email: [
+    { required: true, validator: validateEmail, trigger: 'blur' }
+  ],
+  phone: [
+    { validator: validatePhone, trigger: 'blur' }
+  ],
+  password: [
+    { required: true, message: '请输入密码', trigger: 'blur' },
+    { min: 6, message: '密码不能少于6位', trigger: 'blur' }
+  ],
+  confirmPassword: [
+    { required: true, validator: validateConfirmPassword, trigger: 'blur' }
+  ],
+  role: [
+    { required: true, message: '请选择角色', trigger: 'change' }
+  ]
+}
+
+// 填充测试账号
+const useTestAccount = () => {
+  loginForm.username = 'teacher'
+  loginForm.password = '123456'
+  ElMessage.info('已填充测试账号，点击登录即可进入系统')
+}
+
+// 登录处理
+const handleLogin = async () => {
+  if (!loginFormRef.value) return
+  
+  try {
+    await loginFormRef.value.validate()
+    
+    loading.value = true
+    
+    // 模拟登录API调用
+    setTimeout(() => {
+      loading.value = false
+      // 简单的账号密码验证
+      if (loginForm.username === 'teacher' && loginForm.password === '123456') {
+        localStorage.setItem('user', JSON.stringify({
+          username: loginForm.username,
+          role: '教师'
+        }))
+        
+        ElMessage.success('登录成功')
+        router.push('/dashboard')
+      } else {
+        ElMessage.error('用户名或密码错误')
+      }
+    }, 1000)
+  } catch (error) {
+    console.error('表单验证失败', error)
   }
+}
 
-  // 验证密码一致性
-  if (registerForm.value.password !== registerForm.value.confirmPassword) {
-    registerErrors.value.confirmPassword = '两次密码不一致';
-    isValid = false;
+// 注册处理
+const handleRegister = async () => {
+  if (!registerFormRef.value) return
+  
+  try {
+    await registerFormRef.value.validate()
+    
+    loading.value = true
+    
+    // 模拟注册API调用
+    setTimeout(() => {
+      loading.value = false
+      ElMessage.success('注册成功，请登录')
+      activeTab.value = 'login'
+      // 清空注册表单
+      Object.keys(registerForm).forEach(key => {
+        registerForm[key] = ''
+      })
+    }, 1500)
+  } catch (error) {
+    console.error('表单验证失败', error)
   }
-
-  return isValid;
-};
-
-const toggleDropdown = () => {
-  showRoleDropdown.value = !showRoleDropdown.value;
-};
-
-const selectRole = (role: string) => {
-  registerForm.value.role = role;
-  showRoleDropdown.value = false;
-  registerErrors.value.role = '';
-};
-
-// 登录事件
-const handleLogin = () => {
-  if (validateLoginForm()) {
-    console.log('Login form submitted:', loginForm.value);
-    // 这里添加实际的登录逻辑
-  }
-};
-
-// 注册事件
-const handleRegister = () => {
-  if (validateRegisterForm()) {
-    console.log('Register form submitted:', registerForm.value);
-    // 这里添加实际的注册逻辑
-  }
-};
-
-onMounted(() => {
-  document.addEventListener('click', (event: Event) => {
-    const target = event.target as HTMLElement;
-    if (!target.closest('#roleSelect')) {
-      showRoleDropdown.value = false;
-    }
-  });
-});
+}
 </script>
 
 <style scoped>
-input[type="number"]::-webkit-inner-spin-button,
-input[type="number"]::-webkit-outer-spin-button {
-  -webkit-appearance: none;
-  margin: 0;
+.login-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  background: transparent;
 }
 
-.rounded-button {
-  border-radius: 6px;
+.login-card {
+  width: 480px;
+  backdrop-filter: blur(10px);
+  background-color: rgba(255, 255, 255, 0.95);
+  border-radius: 16px;
+}
+
+.login-logo {
+  font-size: 28px;
+  text-align: center;
+  margin-bottom: 20px;
+  font-weight: bold;
+  color: var(--el-color-primary);
+  letter-spacing: 2px;
+}
+
+.login-tabs {
+  width: 100%;
+}
+
+.login-options {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.login-button {
+  width: 100%;
+  margin-top: 10px;
+  padding: 12px 0;
+  border-radius: 8px;
+  font-size: 16px;
+}
+
+.register-select {
+  width: 100%;
+}
+
+.demo-user {
+  text-align: center;
+  margin-top: 15px;
+}
+
+:deep(.el-tabs__item) {
+  font-size: 16px;
+  padding: 0 20px 10px;
+}
+
+:deep(.el-form-item__label) {
+  font-weight: 500;
 }
 </style>
-
-<!-- 添加Font Awesome CSS链接 -->
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
