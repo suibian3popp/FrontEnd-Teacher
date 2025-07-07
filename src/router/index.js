@@ -71,6 +71,12 @@ const routes = [
         path: 'resource',
         component: Dashboard // 临时使用Dashboard作为资源页面
       },
+      // 添加考试详情路由
+      {
+        path: 'exam/:id',
+        name: 'ExamDetail',
+        component: () => import('../views/ExamDetail.vue')
+      },
      
       // 下面是示例，实际可根据你的页面继续添加
       // {
