@@ -1,7 +1,23 @@
 import axios from "axios";
+import { getToken } from '../utils/auth';
 
 //后端java的http接口地址前缀
 axios.defaults.baseURL = "http://localhost:8090";
+
+// 添加请求拦截器，统一处理token
+axios.interceptors.request.use(
+    config => {
+        const token = getToken();
+        if (token) {
+            config.headers['Authorization'] = 'Bearer ' + token;
+        }
+        return config;
+    },
+    error => {
+        console.error("请求拦截器错误", error);
+        return Promise.reject(error);
+    }
+);
 
 /*
     axios发送get请求
