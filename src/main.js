@@ -24,6 +24,13 @@ axios.interceptors.request.use(
   }
 )
 
+const instance = axios.create({
+  baseURL: 'http://localhost:8082/api', // 端口号8082，api为统一前缀
+  timeout: 10000,
+  // 如果有token，可以在这里加headers
+});
+
+export default instance;
 const app = createApp(App)
 // 注册 pinia
 app.use(createPinia());
