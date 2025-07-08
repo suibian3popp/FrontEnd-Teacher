@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import LiveClass from "@/views/LiveClass.vue";
 
 // 组件懒加载
 const Home = () => import('../views/Home.vue')
@@ -39,6 +40,12 @@ const routes = [
         path: 'course',
         component: CourseManagement
       },
+      //直播
+      {
+        path: '/live-class',
+        name: 'LiveClass',
+        component: LiveClass
+      },
       {
         path: 'class',
         component: ClassManagement
@@ -77,7 +84,7 @@ const routes = [
         name: 'ExamDetail',
         component: () => import('../views/ExamDetail.vue')
       },
-     
+
       // 下面是示例，实际可根据你的页面继续添加
       // {
       //   path: 'course',
@@ -122,7 +129,7 @@ router.beforeEach((to, from, next) => {
   if (to.matched.some(record => record.meta.requiresAuth)) {
     // 从localStorage获取用户信息
     const userStr = localStorage.getItem('user')
-    
+
     // 如果没有用户信息，重定向到登录页面
     if (!userStr) {
       next({ path: '/login' })
