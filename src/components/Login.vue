@@ -64,6 +64,12 @@
                 <el-option v-for="role in roles" :key="role" :label="role" :value="role" />
               </el-select>
             </el-form-item>
+
+            <el-form-item label="院系" prop="departmentId" v-if="activeTab === 'register'">
+              <el-select v-model="registerForm.departmentId" placeholder="请选择院系">
+                <el-option v-for="dept in departments" :key="dept.id" :label="dept.name" :value="dept.id" />
+              </el-select>
+            </el-form-item>
             
             <el-button type="primary" :loading="loading" class="login-button" @click="handleRegister">注册</el-button>
           </el-form>
@@ -78,6 +84,8 @@ import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElLoading } from 'element-plus'
 import { User, Lock, Message, Phone } from '@element-plus/icons-vue'
 import { useRouter } from 'vue-router'
+import { login, register } from '../api/auth'
+import { setToken, setUser } from '../utils/auth'
 
 const router = useRouter()
 const activeTab = ref('login')
@@ -103,10 +111,24 @@ const registerForm = reactive({
   phone: '',
   password: '',
   confirmPassword: '',
-  role: ''
+  role: '',
+  departmentId: '',
 })
 
 const roles = ['院系管理员', '教师', '助教']
+
+// 静态院系列表（实际可用API获取）
+const departments = [
+  { id: 1, name: '计算机科学与技术学院' },
+  { id: 2, name: '外国语学院' },
+  { id: 3, name: '数学与统计学院' }
+]
+// 角色映射
+const roleMap = {
+  '院系管理员': 'department_admin',
+  '教师': 'teacher',
+  '助教': 'ta'
+}
 
 // 验证规则
 const loginRules = {
@@ -179,6 +201,9 @@ const registerRules = {
   ],
   role: [
     { required: true, message: '请选择角色', trigger: 'change' }
+  ],
+  departmentId: [
+    { required: true, message: '请选择院系', trigger: 'change' }
   ]
 }
 
@@ -189,57 +214,106 @@ const useTestAccount = () => {
   ElMessage.info('已填充测试账号，点击登录即可进入系统')
 }
 
+// 处理登录成功
+const handleLoginSuccess = (res) => {
+  // 获取token，可能在不同位置，优先检查accessToken(JWT标准名称)
+  const token = res.accessToken || res.data?.token || res.token
+  const user = {
+    userId: res.userId,
+    username: res.username,
+    userType: res.userType,
+    realName: res.realName,
+    departmentId: res.departmentId,
+    departmentName: res.department
+  }
+  
+  if (token) {
+    setToken(token)
+    setUser(user)
+    ElMessage.success('登录成功')
+    router.push('/dashboard')
+  } else {
+    ElMessage.warning('登录成功但未获取到令牌，请联系管理员')
+    console.error('登录未获取到令牌:', res)
+  }
+}
+
 // 登录处理
 const handleLogin = async () => {
   if (!loginFormRef.value) return
-  
   try {
     await loginFormRef.value.validate()
-    
     loading.value = true
     
-    // 模拟登录API调用
-    setTimeout(() => {
-      loading.value = false
-      // 简单的账号密码验证
-      if (loginForm.username === 'teacher' && loginForm.password === '123456') {
-        localStorage.setItem('user', JSON.stringify({
-          username: loginForm.username,
-          role: '教师'
-        }))
-        
-        ElMessage.success('登录成功')
-        router.push('/dashboard')
-      } else {
-        ElMessage.error('用户名或密码错误')
-      }
-    }, 1000)
+    // 只使用标准JSON格式
+    const loginData = {
+      username: loginForm.username,
+      password: loginForm.password
+    }
+    
+    console.log('登录请求数据:', loginData)
+    let res = await login(loginData)
+    loading.value = false
+    
+    console.log('登录响应数据:', res)
+    
+    // 更灵活的成功判断 - 检查accessToken或其他token形式
+    if (res && (res.code === 200 || res.token || res.accessToken)) {
+      handleLoginSuccess(res)
+    } else {
+      ElMessage.error(res?.message || '登录失败')
+      console.error('登录失败详情:', res)
+    }
   } catch (error) {
-    console.error('表单验证失败', error)
+    loading.value = false
+    ElMessage.error(error.message || '登录异常')
+    console.error('登录异常详情:', error)
   }
 }
 
 // 注册处理
 const handleRegister = async () => {
   if (!registerFormRef.value) return
-  
   try {
     await registerFormRef.value.validate()
-    
     loading.value = true
     
-    // 模拟注册API调用
-    setTimeout(() => {
-      loading.value = false
+    // 添加调试日志
+    const requestData = {
+      username: registerForm.username,
+      password: registerForm.password,
+      realName: registerForm.realName,
+      userType: roleMap[registerForm.role],
+      departmentId: registerForm.departmentId,
+      email: registerForm.email
+    }
+    console.log('注册请求数据:', requestData)
+    
+    const res = await register(requestData)
+    loading.value = false
+    
+    // 修改判断逻辑：只要返回了userId就认为成功
+    if (res && res.userId) {
       ElMessage.success('注册成功，请登录')
       activeTab.value = 'login'
-      // 清空注册表单
       Object.keys(registerForm).forEach(key => {
         registerForm[key] = ''
       })
-    }, 1500)
+    } else if (res && res.code === 200) {
+      // 保留原有逻辑作为备选
+      ElMessage.success('注册成功，请登录')
+      activeTab.value = 'login'
+      Object.keys(registerForm).forEach(key => {
+        registerForm[key] = ''
+      })
+    } else {
+      ElMessage.error(res.message || '注册失败')
+      console.error('注册失败详情:', res)
+    }
   } catch (error) {
-    console.error('表单验证失败', error)
+    loading.value = false
+    ElMessage.error(error.message || '注册异常')
+    console.error('注册异常详情:', error)
   }
 }
 </script>

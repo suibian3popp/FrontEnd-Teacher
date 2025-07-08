@@ -96,6 +96,36 @@ const routes = [
         component: () => import('../views/ResourcePreview.vue'),
         meta: { title: '资源预览' }
       }
+     
+      // 下面是示例，实际可根据你的页面继续添加
+      // {
+      //   path: 'course',
+      //   component: Course
+      // },
+      // {
+      //   path: 'assignment/:course',
+      //   component: Assignment
+      // },
+      // {
+      //   path: 'exam/:course',
+      //   component: Exam
+      // },
+      // {
+      //   path: 'resource/personal',
+      //   component: ResourcePersonal
+      // },
+      // {
+      //   path: 'resource/public',
+      //   component: ResourcePublic
+      // },
+      // {
+      //   path: 'student/:class',
+      //   component: Student
+      // },
+      // {
+      //   path: 'class',
+      //   component: Class
+      // }
     ]
   }
 ]

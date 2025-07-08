@@ -9,13 +9,18 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@tencentcloud/roomkit-web-vue3": "^3.1.0",
     "autoprefixer": "^10.4.21",
     "axios": "^1.10.0",
     "echarts": "^5.6.0",
     "element-plus": "^2.10.3",
     "file-saver": "^2.0.5",
+<<<<<<< HEAD
     "pdfjs-dist": "^5.3.93",
     "qs": "^6.14.0",
+=======
+    "pinia": "^2.3.1",
+>>>>>>> fb466df7be0bd1f3c3d7e4a7fa4ad57c6040c10e
     "vue": "^3.5.17",
     "vue-router": "^4.5.1",
     "xlsx": "^0.18.5"
