@@ -32,7 +32,7 @@
         </el-menu-item>
 
         <!-- 资源库 -->
-        <el-menu-item index="resource">
+        <el-menu-item index="/resource/list/1000">
           <el-icon><Files /></el-icon>
           <span>资源库</span>
         </el-menu-item>

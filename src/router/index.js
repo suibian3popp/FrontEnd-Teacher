@@ -77,36 +77,25 @@ const routes = [
         name: 'ExamDetail',
         component: () => import('../views/ExamDetail.vue')
       },
-     
-      // 下面是示例，实际可根据你的页面继续添加
-      // {
-      //   path: 'course',
-      //   component: Course
-      // },
-      // {
-      //   path: 'assignment/:course',
-      //   component: Assignment
-      // },
-      // {
-      //   path: 'exam/:course',
-      //   component: Exam
-      // },
-      // {
-      //   path: 'resource/personal',
-      //   component: ResourcePersonal
-      // },
-      // {
-      //   path: 'resource/public',
-      //   component: ResourcePublic
-      // },
-      // {
-      //   path: 'student/:class',
-      //   component: Student
-      // },
-      // {
-      //   path: 'class',
-      //   component: Class
-      // }
+      //上传资源
+      {
+        path: '/resource/upload',
+        component: () => import('../views/UploadResource.vue')
+      },
+      //资源列表
+      {
+        //动态路由,id是变量
+        path: '/resource/list/:userId',
+        // path: '/resource/list',
+        component: () => import('../views/ResourcesList.vue')
+      },
+      //资源详情
+      {
+        path: '/resource/preview',
+        name: 'ResourcePreview',
+        component: () => import('../views/ResourcePreview.vue'),
+        meta: { title: '资源预览' }
+      }
     ]
   }
 ]
