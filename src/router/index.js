@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import LiveClass from "@/views/LiveClass.vue";
 
 // 组件懒加载
 const Home = () => import('../views/Home.vue')
@@ -76,6 +77,12 @@ const routes = [
         path: 'exam/:id',
         name: 'ExamDetail',
         component: () => import('../views/ExamDetail.vue')
+      },
+      //直播
+      {
+        path: '/live-class',
+        name: 'LiveClass',
+        component: LiveClass
       },
       //上传资源
       {
