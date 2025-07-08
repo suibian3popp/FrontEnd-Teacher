@@ -10,26 +10,23 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: 'http://localhost:8080',
-        changeOrigin: true,
-        secure: false,
-        // 移除路径重写
-        headers: {
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Methods': 'GET,PUT,POST,DELETE,OPTIONS',
-          'Access-Control-Allow-Headers': 'Content-Type,Authorization,X-Requested-With'
-        }
+        target: 'http://localhost:8082',
+        changeOrigin: true
       },
-      '/auth': {
-        target: 'http://localhost:8080',
-        changeOrigin: true,
-        secure: false,
-        headers: {
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Methods': 'GET,PUT,POST,DELETE,OPTIONS',
-          'Access-Control-Allow-Headers': 'Content-Type,Authorization,X-Requested-With'
+      '/service': {
+        target: 'http://localhost:8082',
+        changeOrigin: true
+      },
+        '/auth': {
+            target: 'http://localhost:8080',
+            changeOrigin: true,
+            secure: false,
+            headers: {
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Methods': 'GET,PUT,POST,DELETE,OPTIONS',
+                'Access-Control-Allow-Headers': 'Content-Type,Authorization,X-Requested-With'
+            }
         }
-      }
     }
   },
   plugins: [

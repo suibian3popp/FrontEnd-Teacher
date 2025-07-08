@@ -14,6 +14,8 @@
           placeholder="搜索课程"
           prefix-icon="Search"
           class="search-input"
+          @keyup.enter="handleSearch"
+          @clear="fetchCourses"
         />
         <!-- 课程类型筛选 -->
         <el-radio-group v-model="courseTypeFilter" size="small">
@@ -100,20 +102,11 @@
               </el-tag>
               <span class="chapter-count">
                 <el-icon><Reading /></el-icon>
-                {{ course.chapters.length }} 章节
+                {{ course.chapter_count || 0 }} 章节
+                
               </span>
             </div>
-            <!-- 课程时间信息 -->
-            <div class="course-time-info">
-              <p v-if="course.startTime" class="time-info">
-                <el-icon><Calendar /></el-icon>
-                开始: {{ formatDateTime(course.startTime) }}
-              </p>
-              <p v-if="course.endTime" class="time-info">
-                <el-icon><Clock /></el-icon>
-                结束: {{ formatDateTime(course.endTime) }}
-              </p>
-            </div>
+            
             <div class="course-action-button">
               <el-button 
                 :type="course.courseType === 'live' ? 'danger' : 'success'"
@@ -135,54 +128,77 @@
     <!-- 创建课程的对话框 -->
     <el-dialog
       v-model="showCreateModal"
-      title="创建课程"
-      width="500px"
+      title="创建新课程"
+      width="600px"
+      top="5vh"
     >
       <!-- 创建课程的表单 -->
-      <el-form :model="newCourse" label-position="top">
-        <el-form-item label="课程名称" required>
-          <el-input v-model="newCourse.course_name" placeholder="请输入课程名称" />
+      <el-form :model="newCourse" label-position="top" ref="createCourseForm">
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="课程名称" prop="name" required>
+              <el-input v-model="newCourse.name" placeholder="请输入课程名称" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="开设学期" prop="semester">
+              <el-input v-model="newCourse.semester" placeholder="例如：2024-2025-1" />
+            </el-form-item>
+          </el-col>
+        </el-row>
+
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="助教" prop="assistant_id">
+              <el-select v-model="newCourse.assistant_id" placeholder="请选择助教" class="w-100">
+                <el-option
+                  v-for="assistant in assistants"
+                  :key="assistant.id"
+                  :label="assistant.name"
+                  :value="assistant.id"
+                />
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="所属院系" prop="department_id">
+              <el-select v-model="newCourse.department_id" placeholder="请选择院系" class="w-100">
+                <el-option
+                  v-for="department in departments"
+                  :key="department.id"
+                  :label="department.name"
+                  :value="department.id"
+                />
+              </el-select>
+            </el-form-item>
+          </el-col>
+        </el-row>
+
+        <el-form-item label="课程类型" prop="course_type" required>
+          <el-radio-group v-model="newCourse.course_type">
+            <el-radio-button value="recorded">录播</el-radio-button>
+            <el-radio-button value="live">直播</el-radio-button>
+          </el-radio-group>
         </el-form-item>
-        <el-form-item label="课程类型">
-          <el-select v-model="newCourse.course_type" placeholder="请选择课程类型" class="w-100">
-            <el-option label="录播课程" value="recorded" />
-            <el-option label="直播课程" value="live" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="助教">
-          <el-select v-model="newCourse.assistant_id" placeholder="请选择助教" class="w-100">
-            <el-option
-              v-for="assistant in assistants"
-              :key="assistant.id"
-              :label="assistant.name"
-              :value="assistant.id"
-            />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="课程封面">
-          <el-input v-model="newCourse.cover_image" placeholder="请输入课程封面图片URL" />
-        </el-form-item>
-        <el-form-item label="开始时间">
-          <el-date-picker
-            v-model="newCourse.start_time"
-            type="datetime"
-            placeholder="请选择开始时间"
-            format="YYYY-MM-DD HH:mm"
-            value-format="YYYY-MM-DD HH:mm:ss"
-            class="w-100"
+
+        <el-form-item label="课程简介" prop="description">
+          <el-input 
+            v-model="newCourse.description" 
+            type="textarea" 
+            :rows="4" 
+            placeholder="请输入课程简介" 
           />
         </el-form-item>
-        <el-form-item label="结束时间">
-          <el-date-picker
-            v-model="newCourse.end_time"
-            type="datetime"
-            placeholder="请选择结束时间"
-            format="YYYY-MM-DD HH:mm"
-            value-format="YYYY-MM-DD HH:mm:ss"
-            class="w-100"
+
+        <el-form-item label="封面图资源ID" prop="cover_image_resource">
+          <el-input 
+            v-model.number="newCourse.cover_image_resource" 
+            type="number" 
+            placeholder="请输入封面图资源ID"
           />
         </el-form-item>
       </el-form>
+
       <!-- 对话框底部按钮 -->
       <template #footer>
         <span class="dialog-footer">
@@ -319,6 +335,9 @@
         v-if="currentCourse"
         :course="currentCourse" 
         @update:course="handleCourseUpdate"
+        @add-chapter="handleChapterAdd"
+        @edit-chapter="handleChapterEdit"
+        @delete-chapter="handleChapterDelete"
       />
     </el-dialog>
   </div>
@@ -342,7 +361,9 @@ import {
 } from '@element-plus/icons-vue';
 import { ElMessageBox, ElMessage } from 'element-plus';
 import CourseDetail from '../components/CourseDetail.vue';
-// import axios from 'axios';
+import { getTeacherCourses, createCourse as apiCreateCourse, deleteCourse as apiDeleteCourse, getCourseChapters, addChapter, deleteChapter, updateChapter } from '@/api/course.js';
+import { getAssistants as apiGetAssistants } from '@/api/assistant.js';
+import { getDepartments as apiGetDepartments } from '@/api/department';
 
 // 视图模式状态，默认为网格模式
 const viewMode = ref('grid');
@@ -379,262 +400,183 @@ const liveForm = ref({
 
 // 新课程表单数据
 const newCourse = ref({
-  course_name: '',
-  course_type: 'recorded',
+  name: '',
+  teacher_id: null, // Assuming teacher_id is from logged-in user
   assistant_id: null,
-  cover_image: '',
-  start_time: '',
-  end_time: ''
+  department_id: null,
+  semester: '',
+  description: '',
+  course_type: 'recorded',
+  cover_image_resource: null,
 });
 
 // 助教列表
 const assistants = ref([]);
-// 加载状态
+// 部门列表
+const departments = ref([]);
 const loading = ref(false);
 
 // 课程数据列表
-const courses = ref([
-  {
-    id: 1,
-    name: '高等数学（一）',
-    assistant: '张三',
-    cover: 'https://shadow.elemecdn.com/app/element/hamburger.9cf7b091-55e9-11e9-a976-7f4d0b07eef6.png',
-    status: '进行中',
-    courseType: 'recorded',
-    startTime: '2024-03-01 09:00',
-    endTime: '2024-07-01 18:00',
-    chapters: [
-      { 
-        chapter_id: 1, 
-        course_id: 1, 
-        chapter_name: '课程介绍', 
-        resources: [
-          { id: 101, name: '课程大纲.pdf', type: 'pdf', size: '2.5MB', uploadTime: '2024-07-28' },
-          { id: 102, name: '介绍视频.mp4', type: 'video', size: '156MB', uploadTime: '2024-07-28' }
-        ]
-      },
-      { 
-        chapter_id: 2, 
-        course_id: 1, 
-        chapter_name: '集合与函数', 
-        resources: [
-          { id: 201, name: '集合的概念.pdf', type: 'pdf', size: '3.1MB', uploadTime: '2024-07-29' }
-        ]
-      },
-      { 
-        chapter_id: 3, 
-        course_id: 1, 
-        chapter_name: '极限与连续', 
-        resources: [] 
+const courses = ref([]);
+
+const fetchCourses = async () => {
+  loading.value = true;
+  try {
+    const response = await getTeacherCourses(13); // teacherId 13
+    console.log(response.data);
+
+    // 首先检查业务响应码是否成功
+    if (response.data && response.data.code === 200) {
+      // 然后再安全地检查data字段是否存在且有内容
+      if (response.data.data && response.data.data.length > 0) {
+        // 对后端返回的数据进行转换
+        courses.value = response.data.data.map(course => ({
+          id: course.course_id,
+          name: course.course_name,
+          courseType: course.course_type,
+          cover: course.cover_image || 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="300" height="200"%3E%3Crect width="100%" height="100%" fill="%23e9ecef"/%3E%3Ctext x="50%" y="50%" fill="%236c757d" dy=".3em" text-anchor="middle"%3E无封面%3C/text%3E%3C/svg%3E',
+          chapter_count: course.chapter_count || 0,
+          assistant: course.assistant_realname || '暂无助教',
+          status: '进行中'
+        }));
+        ElMessage.success('课程列表获取成功');
+      } else {
+        // 业务成功，但没有课程数据
+        courses.value = [];
+        ElMessage.info('您还没有任何课程');
       }
-    ]
-  },
-  {
-    id: 2,
-    name: '线性代数',
-    assistant: '张晓峰',
-    status: '已结束',
-    courseType: 'live',
-    startTime: '2023-09-01 14:00',
-    endTime: '2024-01-15 16:00',
-    chapters: []
-  },
-  {
-    id: 3,
-    name: '概率论与数理统计',
-    assistant: '陈雨婷',
-    status: '进行中',
-    courseType: 'recorded',
-    startTime: '2024-03-01 09:00',
-    endTime: '2024-07-01 18:00',
-    chapters: []
+    } else {
+      // 业务不成功 (e.g., code !== 200)
+      ElMessage.error(response.data.message || '获取课程列表失败');
+      courses.value = [];
+    }
+  } catch (error) {
+    console.error("获取课程列表失败:", error);
+    ElMessage.error('获取课程列表失败，请检查网络或联系管理员');
+    courses.value = []; // 网络请求等其他错误的回退
+  } finally {
+    loading.value = false;
   }
-]);
-
-// 根据搜索关键词和课程类型过滤课程列表
-const filteredCourses = computed(() => {
-  let result = courses.value;
-  
-  // 按关键词过滤
-  if (searchKeyword.value) {
-    const keyword = searchKeyword.value.toLowerCase();
-    result = result.filter(course => 
-      course.name.toLowerCase().includes(keyword) ||
-      course.assistant.toLowerCase().includes(keyword)
-    );
-  }
-  
-  // 按课程类型过滤
-  if (courseTypeFilter.value !== 'all') {
-    result = result.filter(course => course.courseType === courseTypeFilter.value);
-  }
-  
-  return result;
-});
-
-// 格式化日期时间
-const formatDateTime = (dateTimeStr) => {
-  if (!dateTimeStr) return '';
-  const date = new Date(dateTimeStr);
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  const hours = String(date.getHours()).padStart(2, '0');
-  const minutes = String(date.getMinutes()).padStart(2, '0');
-  
-  return `${year}-${month}-${day} ${hours}:${minutes}`;
 };
 
-// 页面加载时获取助教列表
+// 组件挂载时自动获取数据
 onMounted(() => {
+  fetchCourses();
   fetchAssistants();
+  fetchDepartments();
 });
 
 // 获取助教列表的方法
 const fetchAssistants = async () => {
   try {
-    // 在实际应用中，应该替换为真实的API地址
-    // const response = await axios.get('/api/assistants');
-    // assistants.value = response.data.data;
-    
-    // 模拟数据
-    assistants.value = [
-      { id: 1, name: '李思琪' },
-      { id: 2, name: '张晓峰' },
-      { id: 3, name: '陈雨婷' },
-      { id: 4, name: '王明辉' },
-      { id: 5, name: '林小雨' }
-    ];
+    const response = await apiGetAssistants();
+    if (response.data && response.data.code === 200) {
+      assistants.value = response.data.data;
+    } else {
+      ElMessage.error('获取助教列表失败');
+    }
   } catch (error) {
     console.error('获取助教列表失败:', error);
     ElMessage.error('获取助教列表失败');
   }
 };
 
-// 创建新课程的方法
-const createCourse = async () => {
-  // 表单验证
-  if (!newCourse.value.course_name) {
-    ElMessage.warning('请输入课程名称');
-    return;
-  }
-
+const fetchDepartments = async () => {
   try {
-    loading.value = true;
-    
-    // 准备请求数据
+    const res = await apiGetDepartments();
+    if (res.data && res.data.code === 200) {
+      // The component expects `id` and `name`, so we map the response
+      departments.value = res.data.data.map(dep => ({
+        id: dep.department_id,
+        name: dep.name,
+      }));
+    } else {
+      ElMessage.error('获取院系列表失败');
+    }
+  } catch (error) {
+    console.error('获取院系列表失败:', error);
+    ElMessage.error('获取院系列表失败');
+  }
+};
+
+const createCourse = async () => {
+  // Optional: Add form validation
+  // const form = refs.createCourseForm;
+  // if (!form) return;
+  // await form.validate();
+
+  loading.value = true;
+  try {
     const courseData = {
-      course_name: newCourse.value.course_name,
-      course_type: newCourse.value.course_type,
-      assistant_id: newCourse.value.assistant_id,
-      cover_image: newCourse.value.cover_image,
-      start_time: newCourse.value.start_time,
-      end_time: newCourse.value.end_time
+      ...newCourse.value,
+      teacher_id: 13, // Hardcode teacher_id to 13 as requested
     };
     
-    // 在实际应用中，应该使用真实的API调用
-    // const response = await axios.post('/api/courses', courseData);
-    // const courseId = response.data.data;
+    console.log("Submitting new course data to backend:", courseData);
     
-    // 模拟成功响应
-    const courseId = courses.value.length + 1;
-    
-    // 更新本地课程列表
-    courses.value.push({
-      id: courseId,
-      name: courseData.course_name,
-      assistant: assistants.value.find(a => a.id === courseData.assistant_id)?.name || '暂无助教',
-      status: '未开始',
-      chapters: [],
-      courseType: courseData.course_type,
-      startTime: courseData.start_time,
-      endTime: courseData.end_time,
-      cover: courseData.cover_image
-    });
-    
-    ElMessage.success('创建课程成功');
-    showCreateModal.value = false;
-    
-    // 重置表单
-    newCourse.value = {
-      course_name: '',
-      course_type: 'recorded',
-      assistant_id: null,
-      cover_image: '',
-      start_time: '',
-      end_time: ''
-    };
+    const createRes = await apiCreateCourse(courseData);
+    if (createRes.data && createRes.data.code === 200) {
+      ElMessage.success('课程创建成功');
+      showCreateModal.value = false;
+      fetchCourses(); // Refresh the course list
+    } else {
+      throw new Error(createRes.data.message || '创建课程失败');
+    }
+
   } catch (error) {
     console.error('创建课程失败:', error);
-    ElMessage.error('创建课程失败');
+    ElMessage.error(error.message || '创建课程失败，请稍后重试');
   } finally {
     loading.value = false;
   }
 };
 
-// 编辑课程的方法
-const editCourse = (course) => {
-  // 设置当前课程并显示详情
-  currentCourse.value = {
-    ...course,
-    chapters: course.chapters && typeof course.chapters === 'number' 
-      ? generateDummyChapters(course.chapters, course.name)
-      : course.chapters || []
-  };
+const editCourse = async (course) => {
   showCourseDetail.value = true;
-};
+  currentCourse.value = { ...course, chapters: [] }; // Set basic info first, clear old chapters
 
-// 生成模拟章节数据
-const generateDummyChapters = (count, courseName) => {
-  const chapters = [];
-  for (let i = 1; i <= count; i++) {
-    chapters.push({
-      id: i,
-      title: `第${i}章：${getChapterName(i, courseName)}`,
-      description: `${courseName}的第${i}章内容介绍`,
-      resources: []
-    });
+  try {
+    const res = await getCourseChapters(course.id);
+    if (res.data && res.data.code === 200) {
+      // Filter out top-level chapters with chapter_id === 0
+      const filteredChapters = res.data.data.filter(chapter => chapter.chapter_id !== 0);
+      // Add prefixes to the chapter titles
+      const formattedChapters = addChapterPrefixes(filteredChapters);
+      currentCourse.value.chapters = formattedChapters;
+    } else {
+      ElMessage.error('获取章节信息失败');
+      // Even if fetching fails, we keep the detail modal open with basic info
+    }
+  } catch (error) {
+    console.error('获取章节失败:', error);
+    ElMessage.error('获取章节信息失败');
   }
-  return chapters;
 };
 
-// 根据章节序号生成章节名称
-const getChapterName = (index, courseName) => {
-  const names = {
-    1: '课程概述',
-    2: '基本概念',
-    3: '核心理论',
-    4: '实践应用',
-    5: '案例分析',
-    6: '进阶技巧',
-    7: '综合实践',
-    8: '总结与展望'
-  };
-  
-  return names[index] || `${courseName}章节${index}`;
-};
-
-// 删除课程的方法，带确认对话框
 const deleteCourse = (course) => {
-  // 防止事件冒泡
-  event.stopPropagation();
-  ElMessageBox.confirm('确定要删除该课程吗？', '提示', {
-    confirmButtonText: '确定',
-    cancelButtonText: '取消',
-    type: 'warning'
-  }).then(() => {
-    // 确认删除，从列表中移除课程
-    courses.value = courses.value.filter(c => c.id !== course.id);
-    ElMessage({
-      type: 'success',
-      message: '删除成功'
-    });
+  ElMessageBox.confirm(
+    `您确定要删除课程《${course.name}》吗？此操作将无法撤销。`,
+    '删除确认',
+    {
+      confirmButtonText: '确定删除',
+      cancelButtonText: '取消',
+      type: 'warning',
+    }
+  ).then(async () => {
+    try {
+      const res = await apiDeleteCourse(course.id);
+      if (res.data && res.data.code === 200) {
+        ElMessage.success('课程已成功删除');
+        fetchCourses(); // Refresh the course list
+      } else {
+        throw new Error(res.data.message || '删除课程失败');
+      }
+    } catch (error) {
+      console.error(`删除课程 ${course.id} 失败:`, error);
+      ElMessage.error(error.message || '删除操作失败，请稍后重试');
+    }
   }).catch(() => {
-    // 取消删除，显示取消消息
-    ElMessage({
-      type: 'info',
-      message: '已取消删除'
-    });
+    ElMessage.info('已取消删除操作');
   });
 };
 
@@ -684,13 +626,6 @@ const uploadVideo = async () => {
     // 模拟上传过程
     await new Promise(resolve => setTimeout(resolve, 2000));
     
-    // 在实际应用中，应该使用真实的API调用
-    // const formData = new FormData();
-    // formData.append('file', selectedFile.value.raw);
-    // formData.append('courseId', currentCourse.value.id);
-    // formData.append('title', uploadForm.value.title);
-    // formData.append('description', uploadForm.value.description);
-    // await axios.post('/api/course/upload', formData);
     
     // 更新UI
     const courseIndex = courses.value.findIndex(c => c.id === currentCourse.value.id);
@@ -757,16 +692,8 @@ const startLive = async () => {
 
 // 打开课程详情对话框
 const openCourseDetail = (course) => {
-  // 设置当前课程并显示详情
-  currentCourse.value = {
-    ...course,
-    // 如果课程没有章节数据，则初始化为空数组
-    chapters: course.chapters && typeof course.chapters === 'number' 
-      ? generateDummyChapters(course.chapters, course.name)
-      : course.chapters || []
-  };
-  
-  showCourseDetail.value = true;
+  // Call this function to ensure chapters are fetched
+  editCourse(course);
 };
 
 const handleCourseUpdate = (updatedCourse) => {
@@ -779,12 +706,138 @@ const handleCourseUpdate = (updatedCourse) => {
     currentCourse.value = updatedCourse;
   }
 };
+
+const handleSearch = () => {
+  // 本地搜索逻辑，可以根据需要改为后端搜索
+  if (!searchKeyword.value) {
+    fetchCourses(); // 如果搜索词为空，重新获取全部课程
+    return;
+  }
+  const keyword = searchKeyword.value.toLowerCase();
+  courses.value = courses.value.filter(course =>
+    course.course_name.toLowerCase().includes(keyword)
+  );
+};
+
+// 格式化日期时间
+const formatDateTime = (dateTimeStr) => {
+  if (!dateTimeStr) return 'N/A';
+  const date = new Date(dateTimeStr);
+  return date.toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+};
+
+// 根据搜索和筛选计算最终显示的课程
+const filteredCourses = computed(() => {
+  let result = courses.value;
+  
+  // 关键词搜索
+  if (searchKeyword.value) {
+    const keyword = searchKeyword.value.toLowerCase();
+    result = result.filter(course => 
+      course.course_name.toLowerCase().includes(keyword)
+    );
+  }
+  
+  // 课程类型筛选
+  if (courseTypeFilter.value !== 'all') {
+    result = result.filter(course => course.course_type === courseTypeFilter.value);
+  }
+  
+  return result;
+});
+
+const addChapterPrefixes = (chapters) => {
+  // Deep copy to avoid side effects, although data is fresh from API here.
+  const chaptersCopy = JSON.parse(JSON.stringify(chapters));
+
+  // Sort top-level chapters by their order number
+  chaptersCopy.sort((a, b) => a.order_num - b.order_num);
+
+  chaptersCopy.forEach((chapter) => {
+    // Add prefix to top-level chapters
+    chapter.title = `第${chapter.order_num}章：${chapter.title}`;
+
+    if (chapter.children && chapter.children.length > 0) {
+      // Sort child chapters
+      chapter.children.sort((a, b) => a.order_num - b.order_num);
+      
+      // Add prefixes to children
+      chapter.children.forEach((child) => {
+        child.title = `${chapter.order_num}.${child.order_num} ${child.title}`;
+      });
+    }
+  });
+
+  return chaptersCopy;
+};
+
+const handleChapterAdd = async (chapterData, callback) => {
+  try {
+    const payload = {
+      course_id: currentCourse.value.id,
+      parent_id: chapterData.parent_id,
+      title: chapterData.title,
+    };
+    const res = await addChapter(payload);
+    if (res.data && res.data.code === 201) {
+      ElMessage.success('章节添加成功');
+      // Re-fetch all chapters to ensure UI is consistent with the backend state
+      await editCourse(currentCourse.value);
+      if (callback) callback(true);
+    } else {
+      throw new Error(res.data.message || '添加章节失败');
+    }
+  } catch (error) {
+    console.error('添加章节失败:', error);
+    ElMessage.error(error.message || '添加章节失败');
+    if (callback) callback(false);
+  }
+};
+
+const handleChapterEdit = async (chapterData, callback) => {
+  try {
+    const payload = {
+      title: chapterData.title,
+    };
+    const res = await updateChapter(chapterData.chapter_id, payload);
+    if (res.data && res.data.code === 200) {
+      ElMessage.success('章节更新成功');
+      // Re-fetch all chapters to ensure UI is consistent with the backend state
+      await editCourse(currentCourse.value);
+      if (callback) callback(true);
+    } else {
+      throw new Error(res.data.message || '更新章节失败');
+    }
+  } catch (error) {
+    console.error('更新章节失败:', error);
+    ElMessage.error(error.message || '更新章节失败');
+    if (callback) callback(false);
+  }
+};
+
+const handleChapterDelete = async (chapterId) => {
+  try {
+    const res = await deleteChapter(chapterId);
+    if (res.data && res.data.code === 200) {
+      ElMessage.success('章节删除成功');
+      // Re-fetch all chapters to ensure UI is consistent with the backend state
+      await editCourse(currentCourse.value);
+    } else {
+      throw new Error(res.data.message || '删除章节失败');
+    }
+  } catch (error) {
+    console.error('删除章节失败:', error);
+    ElMessage.error(error.message || '删除章节失败');
+  }
+};
 </script>
 
 <style scoped>
 /* 课程管理主容器样式 */
 .course-management {
-  padding: 20px;
+  padding: 24px;
+  background-color: #f5f7fa;
+  min-height: 100vh;
 }
 
 /* 头部区域样式 */
@@ -994,5 +1047,29 @@ const handleCourseUpdate = (updatedCourse) => {
 /* 表单控件宽度100% */
 .w-100 {
   width: 100%;
+}
+
+.cover-uploader .el-upload {
+  border: 1px dashed #d9d9d9;
+  border-radius: 6px;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+}
+.cover-uploader .el-upload:hover {
+  border-color: #409eff;
+}
+.cover-uploader-icon {
+  font-size: 28px;
+  color: #8c939d;
+  width: 178px;
+  height: 178px;
+  text-align: center;
+  line-height: 178px;
+}
+.cover-image {
+  width: 178px;
+  height: 178px;
+  display: block;
 }
 </style> 
