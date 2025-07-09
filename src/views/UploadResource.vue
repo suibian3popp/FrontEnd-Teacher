@@ -68,7 +68,7 @@
             :on-error="resError"
             :file-list="resFileList"
             :on-change="handleFileChange"
-            :action="`http://localhost:8090/api/resource/upload`"
+            :action="`http://localhost:8090/api/service/resource/upload`"
             :auto-upload="false"
             :show-file-list="true">
           <img v-if="imageUrl" :src="imageUrl" class="avatar"  alt="上传的文件预览"/>
@@ -213,7 +213,7 @@ function submitUpload () {
     formData.append('permission', form.permission)
 
     //调用上传接口
-    doPost('/api/resource/upload', formData)
+    doPost('/api/service/resource/upload', formData)
         .then((res) => {
           if (res.data.code === 200) { //后端返回code=200为成功
             ElMessage.success('资源上传成功！')
