@@ -132,7 +132,7 @@ const fetchPreviewInfo = async () => {
   loading.value = true
   textLoading.value = false
 
-  doGet(`/api/resource/preview/${resourceId.value}`)
+  doGet(`/api/service/resource/preview/${resourceId.value}`)
       .then(async (response) => {
         console.log('接口完整响应:', response);
         if (response.data.code === 200) {
@@ -284,7 +284,7 @@ const nextPage = () => {
 //下载
 function handleDownload(resourceId){
   let iframe = document.createElement("iframe");
-  iframe.src = axios.defaults.baseURL + "/api/resource/download/" +resourceId;
+  iframe.src = axios.defaults.baseURL + "/api/service/resource/download/" +resourceId;
   iframe.style.display = "none";
   document.body.appendChild(iframe);
 }

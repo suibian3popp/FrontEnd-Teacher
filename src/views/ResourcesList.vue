@@ -324,7 +324,7 @@ const fetchResources = async () => {
 
   const serializedParams = qs.stringify(params, { arrayFormat: 'brackets' });
 
-  doGet(`/api/resource/list/${ownerId.value}?${serializedParams}`)
+  doGet(`/api/service/resource/list/${ownerId.value}?${serializedParams}`)
       .then((res) => {
         if (res.data.code === 200) {
           resourceList.value = res.data.data.records
@@ -376,7 +376,7 @@ const resetFilter = () => {
 //资源下载 使用iframe
 function handleDownload(resourceId){
   let iframe = document.createElement("iframe");
-  iframe.src = axios.defaults.baseURL + "/api/resource/download/" +resourceId;
+  iframe.src = axios.defaults.baseURL + "/api/service/resource/download/" +resourceId;
   iframe.style.display = "none";
   document.body.appendChild(iframe);}
 
@@ -408,7 +408,7 @@ const handleView = (row) => {
 
 //删除
 function handleDelete(row) {
-  doDelete("/api/resource/delete/" + row.resourceId).then((resp) => {
+  doDelete("/api/service/resource/delete/" + row.resourceId).then((resp) => {
     if (resp.data.code === 200) {
       //删除成功
       ElMessage({
