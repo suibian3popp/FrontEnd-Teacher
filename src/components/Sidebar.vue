@@ -7,11 +7,22 @@
           <span>首页</span>
         </el-menu-item>
 
-        <!-- 在线授课 -->
+        <!-- 在线授课
         <el-menu-item index="/live-class">
           <el-icon><VideoCamera /></el-icon>
           <span>在线授课</span>
-        </el-menu-item>
+        </el-menu-item> -->
+
+          <!-- 任务中心 -->
+        <el-sub-menu index="live-class">
+          <template #title>
+            <el-icon><List /></el-icon>
+            <span>在线授课</span>
+          </template>
+          <el-menu-item index="/live-class/online">直播授课</el-menu-item>
+          <el-menu-item index="/live-class/join">加入直播</el-menu-item>
+          <el-menu-item index="/live-class/joinclass">success</el-menu-item>
+        </el-sub-menu>
 
         <!-- 课程管理 -->
         <el-menu-item index="/course">

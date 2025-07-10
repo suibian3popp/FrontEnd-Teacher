@@ -165,6 +165,12 @@ export function doPost(url, params, config = {}) {
             ...config.headers,
             'Content-Type': 'multipart/form-data'
         };
+    } else if (typeof params === 'object' && params !== null) {
+        // 对于普通对象，默认使用 application/json
+        config.headers = {
+            ...config.headers,
+            'Content-Type': 'application/json;charset=UTF-8'
+        };
     }
 
     return axios.post(url, params, config)

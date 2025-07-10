@@ -1,32 +1,33 @@
 <template>
   <ConferenceMainView />
 
-  <!-- 录制控制区域：视觉优化 + 位置微调 -->
+  <!-- 录制控制区域 -->
   <div class="fixed top-8 right-6 z-9999 flex flex-col items-end">
-    <!-- 录制按钮：渐变背景 + 呼吸动画 -->
-    <el-button type="info" :icon="Message" @click="toggleRecording" :class="{ 'is-recording': isRecording }"
-               style="position: fixed;
-    top: 14px; /* 向上移动（数值越小越靠上） */
-    left: 1150px; /* 向左移动（数值越小越靠左） */">
-
+    <!-- 录制按钮 -->
+    <el-button 
+      type="info" 
+      @click="toggleRecording" 
+      :class="{ 'is-recording': isRecording }"
+      style="position: fixed; top: 14px; left: 1150px;"
+    >
       <i class="fa fa-circle mr-1 text-red-300"></i>
       <span>{{ isRecording ? '录制中' : '开始录屏' }}</span>
-      <!--    </button>-->
     </el-button>
 
-    <!-- 录制文件列表：玻璃拟态 + 滚动条美化 -->
-    <div v-if="recordingFiles.length > 0" class="mt-2 bg-gray-900/80 p-2 rounded-md w-56 shadow-lg backdrop-blur-sm border border-gray-800"
-         style="position: fixed;
-            left: 1090px;
-            top: 50px;">
+    <!-- 录制文件列表 -->
+    <div 
+      v-if="recordingFiles.length > 0" 
+      class="mt-2 bg-gray-900/80 p-2 rounded-md w-56 shadow-lg backdrop-blur-sm border border-gray-800"
+      style="position: fixed; left: 1090px; top: 50px;"
+    >
       <h3 class="text-xs font-medium mb-1 text-gray-300" style="color:white">录制文件</h3>
-      <ul class="space-y-1 max-h-40 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-gray-800">
+      <ul class="space-y-1 max-h-40 overflow-y-auto">
         <li v-for="(file, index) in recordingFiles" :key="index">
           <a
-              href="#"
-              class="text-blue-400 hover:text-blue-300 text-xs flex items-center justify-between py-1"
-              @click.prevent="downloadFile(file, index)"
-              style="color:white"
+            href="#"
+            class="text-blue-400 hover:text-blue-300 text-xs flex items-center justify-between py-1"
+            @click.prevent="downloadFile(file, index)"
+            style="color:white"
           >
             <span>{{ file.name }}</span>
             <i class="fa fa-download text-blue-300"></i>
@@ -34,23 +35,25 @@
         </li>
       </ul>
     </div>
-
   </div>
 </template>
 
 <script setup>
 import { ConferenceMainView } from '@tencentcloud/roomkit-web-vue3';
 import { conference } from '@tencentcloud/roomkit-web-vue3';
-import { ref, onMounted, onUnmounted, nextTick } from 'vue';
+import { ref, onMounted, onUnmounted } from 'vue';
 import { useRoute } from 'vue-router'
 
 const errorMessage = ref('');
 const route = useRoute()
 const options = ref(null);
-//解析trtc参数
+const roomId = ref(''); // 定义roomId响应式变量
+
+// 解析trtc参数
 onMounted(() => {
   try {
     const paramsStr = route.query.trtcParams;
+    roomId.value = route.query.roomId; // 赋值roomId
     
     if (!paramsStr) {
       throw new Error('缺少TRTC参数，请从直播列表进入');
@@ -61,58 +64,54 @@ onMounted(() => {
     options.value = JSON.parse(decodedStr);
 
     console.log('TRTC参数解析成功:', options.value);
+    console.log("options.value.sdkAppId: " + options.value.sdkAppId);
     
-    console.log("option.value.sdkAppId"+option.value.sdkAppId)
     // 验证解析后的参数是否包含必要字段
-    if (!options.value.sdkAppId || !options.value.userId || !options.value.userSig|| !options.value.roomId) {
+    if (!options.value.sdkAppId || !options.value.userId || !options.value.userSig) {
       throw new Error('TRTC参数格式不正确');
     }
     
+    // 调用加入会议函数（已定义）
     startConference();
   } catch (error) {
     console.error('解析TRTC参数失败:', error);
     errorMessage.value = error.message;
-    // 可以显示错误提示或跳转到错误页面
   }
 });
 
+// 定义startConference函数（之前缺失的函数）
+const startConference = async () => {
+  try {
+    if (!options.value) {
+      throw new Error('TRTC参数未初始化');
+    }
+    await joinConference();
+    console.log('成功加入会议');
+  } catch (error) {
+    console.error('加入会议失败:', error);
+    errorMessage.value = '加入会议失败: ' + error.message;
+  }
+};
 
-// 状态管理
+// 加入会议函数
+const joinConference = async () => {
+  await conference.login({    
+    sdkAppId: options.value.sdkAppId,
+    userId: options.value.userId,
+    userSig: options.value.userSig
+  });
+  await conference.join(roomId.value, { // 使用响应式的roomId.value
+    isOpenCamera: false,
+    isOpenMicrophone: false,
+  });
+};
+
+// 屏幕录制相关逻辑
 let isRecording = ref(false);
 let recordingFiles = ref([]);
 let mediaRecorder = ref(null);
 let recordedChunks = ref([]);
 let screenStream = ref(null);
-
-
-const startConference = async () => {
-  try {
-
-    await conference.login({
-      sdkAppId: options.value.sdkAppId,
-      userId: options.value.userId,
-      userSig:options.value.userSig
-
-    });
-    //这里房间后也要换位trtcParams.roomId
-    await conference.start(options.value.roomId, {
-      roomName: 'TestRoom',
-      isSeatEnabled: false,
-      isOpenCamera: false,
-      isOpenMicrophone: false,
-    });
-    await nextTick();
-    console.log('会议启动成功');
-  } catch (error) {
-    console.error('启动会议失败:', error);
-    alert('启动会议失败: ' + error.message);
-  }
-};
-
-
-
-
-
 
 // 屏幕录制支持检测
 const checkScreenRecordingSupport = () => {
@@ -215,20 +214,27 @@ const downloadFile = (file, index) => {
   URL.revokeObjectURL(file.url);
 };
 
-// 提示框（优化动画）
+// 提示框
 const showToast = (message) => {
   const toast = document.createElement('div');
   toast.textContent = message;
-  toast.className = 'showToast'; // 关联CSS动画
+  toast.style.cssText = `
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 8px 16px;
+    background: rgba(0,0,0,0.7);
+    color: white;
+    border-radius: 4px;
+    z-index: 9999;
+    animation: fade 2.5s;
+  `;
   document.body.appendChild(toast);
   setTimeout(() => {
     toast.remove();
   }, 2500);
 };
-
-onMounted(() => {
-  startConference();
-});
 
 onUnmounted(() => {
   if (isRecording.value && mediaRecorder.value) {
@@ -244,48 +250,34 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-/* 定位与布局 */
-.fixed { position: fixed; }
-.top-8 { top: 2rem; }
-.right-6 { right: 1.5rem; }
-.z-9999 { z-index: 9999; }
-.flex.flex-col.items-end {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-}
-
-/* 录制按钮样式 */
-.mr-1 { margin-right: 0.25rem; }
-.text-red-300 { color: #fca5a5; }
-
 /* 录制中呼吸动画 */
 .is-recording {
   animation: pulse 2s infinite;
 }
 @keyframes pulse {
-  0% { box-shadow: 0 0 0 0 rgba(255, 0, 0,1); }
-  50% { box-shadow: 0 0 0 8px rgba(252, 165, 165, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(252, 165, 165, 0); }
+  0% { box-shadow: 0 0 0 0 rgba(255, 0, 0, 0.7); }
+  50% { box-shadow: 0 0 0 8px rgba(255, 0, 0, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(255, 0, 0, 0); }
 }
 
-/* 录制文件列表：玻璃拟态 + 滚动条 */
-.mt-2 { margin-top: 0.5rem; }
-.bg-gray-900\/80 { background-color: rgba(96, 165, 250, 0.7); }
-.p-2 { padding: 0.5rem; }
-.rounded-md { border-radius: 0.375rem; }
-.w-56 { width: 14rem; }
-.shadow-lg { box-shadow: 0 6px 12px rgba(0,0,0,0.3); }
-.backdrop-blur-sm { backdrop-filter: blur(4px); }
-.border-gray-800 { border-color: #1f2937; }
-.text-gray-300 { color: #d1d5db; }
-.text-xs { font-size: 0.75rem; }
-.space-y-1 > * + * { margin-top: 0.25rem; }
-.max-h-40 { max-height: 10rem; }
+/* 滚动条美化 */
+ul::-webkit-scrollbar {
+  width: 4px;
+}
+ul::-webkit-scrollbar-track {
+  background: rgba(255,255,255,0.1);
+  border-radius: 2px;
+}
+ul::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.3);
+  border-radius: 2px;
+}
 
-
-@keyframes slideIn {
-  from { transform: translateY(20px); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
+/* 提示框动画 */
+@keyframes fade {
+  0% { opacity: 0; }
+  20% { opacity: 1; }
+  80% { opacity: 1; }
+  100% { opacity: 0; }
 }
 </style>

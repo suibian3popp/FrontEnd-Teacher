@@ -3,19 +3,26 @@ import { doPost } from '../http/httpRequest';
 
 // 登录 - 严格按照后端API格式
 export function login(data) {
-  console.log('发送登录请求，完整数据:', data)
+  console.log('发送登录请求，原始数据:', data)
   
   // 确保数据格式完全匹配后端期望的格式
   const loginPayload = {
     username: data.username,
     password: data.password
-  }
+  };
   
-  // 使用JSON格式，确保Content-Type正确设置
-  return doPost('/auth/login', data)
+  console.log('发送登录请求，清理后的数据:', loginPayload);
+  
+  // 使用清理后的数据
+  return doPost('/auth/login', loginPayload)
     .then(response => {
-      // 确保返回的是包含token的数据对象，而不是整个axios响应
-      return response.data; 
+      // 检查：如果doPost已经处理了.data，这里就不需要了。
+      // 但根据我们之前的约定，doPost返回整个response，所以这里需要.data
+      if (response && response.data) {
+        return response.data;
+      }
+      // 兼容doPost直接返回数据的情况
+      return response;
     });
 }
 

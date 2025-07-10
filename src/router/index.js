@@ -1,5 +1,8 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import LiveClass from "@/views/LiveClass.vue";
+import LiveJoin from "@/views/LiveJoin.vue";
+import ClassJoin from "@/views/ClassJoin.vue";
+
 
 // 组件懒加载
 const Home = () => import('../views/Home.vue')
@@ -80,10 +83,24 @@ const routes = [
       },
       //直播
       {
-        path: '/live-class',
+        path: '/live-class/online',
         name: 'LiveClass',
         component: LiveClass
       },
+    
+      // 加入直播
+      {
+        path: '/live-class/join',
+        name: 'LiveJoin',
+        component: LiveJoin
+      },
+        // 加入直播的页面
+      {
+        path: '/live-class/joinclass',
+        name: 'ClassJoin',
+        component: ClassJoin
+      },
+
       //上传资源
       {
         path: '/resource/upload',
