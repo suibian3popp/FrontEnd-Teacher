@@ -282,12 +282,39 @@ const nextPage = () => {
 }
 
 //下载
-function handleDownload(resourceId){
-  let iframe = document.createElement("iframe");
-  iframe.src = axios.defaults.baseURL + "/api/service/resource/download/" +resourceId;
-  iframe.style.display = "none";
-  document.body.appendChild(iframe);
-}
+const handleDownload = async (resourceId) => {
+  if (!resourceId) {
+    ElMessage.error('无效的资源ID');
+    return;
+  }
+
+  // 直接使用从预览信息中获取的文件名
+  const name = fileName.value || `resource-${resourceId}`;
+
+  try {
+    const response = await axios({
+      url: `/api/service/resource/download/${resourceId}`,
+      method: 'GET',
+      responseType: 'blob',
+    });
+
+    const url = window.URL.createObjectURL(new Blob([response.data]));
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', name);
+    document.body.appendChild(link);
+    link.click();
+
+    // 清理
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+    ElMessage.success('下载任务已开始');
+
+  } catch (error) {
+    console.error('下载失败:', error);
+    ElMessage.error('下载失败，请检查网络或登录状态');
+  }
+};
 
 //返回列表
 const goBack = () => {

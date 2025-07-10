@@ -1,450 +1,539 @@
 <template>
-  <div class="assignment-container">
-    <!-- 1. 顶部操作栏 -->
-    <el-card shadow="never" class="action-bar">
-      <div class="action-content">
-        <div class="action-left">
-          <el-input
-            v-model="searchQuery"
-            placeholder="请输入关键字"
-            class="search-input"
-            clearable
-          >
-            <template #prepend>
-              <el-select v-model="searchType" style="width: 115px">
-                <el-option label="名称" value="name" />
-                <el-option label="课程" value="course" />
-                <el-option label="班级" value="class" />
-                <el-option label="截止日期" value="deadline" />
-              </el-select>
-            </template>
-          </el-input>
-        </div>
-        <div class="action-right">
-          <el-button type="primary" @click="openCreateDialog">创建新作业</el-button>
-        </div>
+  <div class="task-assignment-container">
+    <div class="header">
+      <h2>作业管理</h2>
+      <div class="actions">
+        <el-input
+          v-model="searchQuery"
+          placeholder="搜索作业"
+          class="search-input"
+          clearable
+          @clear="handleSearch"
+        >
+          <template #append>
+            <el-button @click="handleSearch">
+              <el-icon><Search /></el-icon>
+            </el-button>
+          </template>
+        </el-input>
+        
+        <el-button type="primary" @click="openCreateDialog">创建作业</el-button>
       </div>
-    </el-card>
+    </div>
 
-    <!-- 2. 待批改作业列表 -->
-    <el-card class="assignment-list">
+    <!-- 统一的作业列表 -->
+    <el-card class="assignment-list-card">
       <template #header>
         <div class="card-header">
-          <span>待批改作业</span>
-          <el-radio-group v-model="gradeFilterStatus" size="small">
-            <el-radio-button label="all">全部</el-radio-button>
-            <el-radio-button label="ongoing">进行中</el-radio-button>
-            <el-radio-button label="finished">已结束</el-radio-button>
-          </el-radio-group>
+          <div class="header-title">全部作业</div>
+          <div class="header-actions">
+            <el-select v-model="filterStatus" placeholder="状态筛选" clearable @change="handleFilterChange">
+              <el-option label="全部" value="" />
+              <el-option label="进行中" value="ongoing" />
+              <el-option label="已结束" value="finished" />
+              <el-option label="未开始" value="pending" />
+              <el-option label="草稿" value="draft" />
+            </el-select>
+          </div>
         </div>
       </template>
-      <div v-if="filteredPendingAssignments.length > 0" class="assignment-list">
-        <el-card v-for="item in filteredPendingAssignments" :key="item.id" class="assignment-card">
-          <div class="assignment-content">
-            <div class="assignment-details">
-              <h3>{{ item.name }}</h3>
-              <p class="description">{{ item.description }}</p>
-              <div class="meta">
-                <span><el-icon><Calendar /></el-icon> 截止日期: {{ item.deadline }}</span>
-                <span><el-icon><User /></el-icon> 完成人数: {{ item.completedCount }} / {{ item.totalCount }}</span>
-              </div>
-            </div>
-            <div class="assignment-actions">
-              <el-button type="primary" link @click="viewDetails(item.id)">
-                <el-icon><View /></el-icon> 查看详情
+
+      <div v-loading="loading.all">
+        <el-table :data="filteredAssignments" style="width: 100%" v-if="filteredAssignments.length > 0">
+          <el-table-column prop="title" label="作业名称" min-width="200">
+            <template #default="{ row }">
+              <router-link :to="`/assignment/${row.assignmentId}`" class="assignment-title-link">
+                {{ row.title }}
+              </router-link>
+            </template>
+          </el-table-column>
+          
+          <el-table-column label="总分值" width="100">
+            <template #default="{ row }">
+              <span>{{ row.score || 90 }}分</span>
+            </template>
+          </el-table-column>
+          
+          <el-table-column label="提交情况" width="120">
+            <template #default="{ row }">
+              <el-progress 
+                :percentage="calculateSubmissionPercentage(row)" 
+                :format="() => `${row.submittedCount || 0}/${row.totalCount || 0}`"
+                :status="getSubmissionStatus(row)"
+              />
+            </template>
+          </el-table-column>
+          
+          <el-table-column label="状态" width="100">
+            <template #default="{ row }">
+              <el-tag :type="getStatusType(row.status)">{{ getStatusText(row.status) }}</el-tag>
+            </template>
+          </el-table-column>
+          
+          <el-table-column label="操作" width="150">
+            <template #default="{ row }">
+              <el-button 
+                type="primary" 
+                link 
+                @click="viewAssignment(row.assignmentId)"
+              >
+                <el-icon><View /></el-icon> 查看
               </el-button>
-              <el-button type="success" link @click="gradeAssignment(item.id)">
-                <el-icon><Check /></el-icon> 批改作业
-              </el-button>
-              <el-button type="danger" link @click="deleteAssignment(item.id)">
+              <el-button 
+                type="danger" 
+                link 
+                @click="confirmDeleteAssignment(row)"
+              >
                 <el-icon><Delete /></el-icon> 删除
               </el-button>
-            </div>
-          </div>
-        </el-card>
+            </template>
+          </el-table-column>
+        </el-table>
+        
+        <div v-else class="empty-state">
+          <el-empty description="暂无作业" v-if="!loading.all">
+            <el-button type="primary" @click="openCreateDialog">创建作业</el-button>
+          </el-empty>
+        </div>
+        
+        <div class="pagination-container" v-if="pagination.total > 0">
+          <el-pagination
+            v-model:current-page="pagination.currentPage"
+            v-model:page-size="pagination.pageSize"
+            :page-sizes="[10, 20, 50, 100]"
+            layout="total, sizes, prev, pager, next, jumper"
+            :total="pagination.total"
+            @size-change="handleSizeChange"
+            @current-change="handleCurrentChange"
+          />
+        </div>
       </div>
-      <el-empty v-else description="暂无待批改的作业"></el-empty>
     </el-card>
 
-    <!-- 3. 未开始作业列表 -->
-    <el-card class="assignment-list">
-      <template #header>
-        <span>未开始作业</span>
-      </template>
-      <el-table :data="notStartedAssignments" stripe>
-        <el-table-column prop="name" label="作业名称" />
-        <el-table-column prop="course" label="所属课程" />
-        <el-table-column label="班级">
-          <template #default="{ row }">
-            {{ Array.isArray(row.class) ? row.class.join(', ') : row.class }}
-          </template>
-        </el-table-column>
-        <el-table-column prop="deadline" label="截止日期" />
-        <el-table-column label="操作">
-          <template #default="{ row }">
-            <el-button type="primary" link @click="handleEdit(row)">修改</el-button>
-            <el-button type="danger" link @click="deleteAssignment(row.id)">删除</el-button>
-          </template>
-        </el-table-column>
-      </el-table>
-    </el-card>
-
-    <!-- 创建新作业弹窗 -->
-    <el-dialog v-model="isDialogVisible" title="创建新作业" width="600px">
-      <CreateAssignmentForm v-if="isDialogVisible" ref="createFormRef" />
-      <template #footer>
-        <span class="dialog-footer">
-          <el-button @click="isDialogVisible = false">取消</el-button>
-          <el-button type="primary" @click="handleFormSubmit">
-            确认创建
-          </el-button>
-        </span>
-      </template>
+    <!-- 创建作业对话框 -->
+    <el-dialog
+      v-model="createDialogVisible"
+      title="创建作业"
+      width="60%"
+      destroy-on-close
+    >
+      <create-assignment-form
+        ref="createFormRef"
+        @created="handleAssignmentCreated"
+      />
     </el-dialog>
 
-    <!-- 修改作业弹窗 -->
-    <el-dialog v-model="editDialogVisible" title="修改作业信息" width="600px">
-      <CreateAssignmentForm
-        v-if="editDialogVisible"
+    <!-- 编辑作业对话框 -->
+    <el-dialog
+      v-model="editDialogVisible"
+      title="编辑作业"
+      width="60%"
+      destroy-on-close
+    >
+      <create-assignment-form
         ref="editFormRef"
-        :initial-data="currentAssignment"
+        :is-edit="true"
+        :assignment-data="currentAssignment"
+        @updated="handleAssignmentUpdated"
       />
-      <template #footer>
-        <span class="dialog-footer">
-          <el-button @click="editDialogVisible = false">取消</el-button>
-          <el-button type="primary" @click="handleFormSubmit">
-            确认修改
-          </el-button>
-        </span>
-      </template>
     </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
-import { Calendar, User, View, Delete, Search, Check } from '@element-plus/icons-vue';
+import { Search, View, Delete } from '@element-plus/icons-vue';
 import CreateAssignmentForm from './common/CreateAssignmentForm.vue';
+import { doGet, doPost, doPut, doDelete } from '../http/httpRequest';
 
-const searchQuery = ref('');
-const searchType = ref('name');
-const activeTab = ref('pending');
-const isDialogVisible = ref(false);
-const editDialogVisible = ref(false);
-const currentAssignment = ref(null);
 const router = useRouter();
-const editFormRef = ref(null);
+const searchQuery = ref('');
+const filterStatus = ref('');
+const createDialogVisible = ref(false);
+const editDialogVisible = ref(false);
 const createFormRef = ref(null);
+const editFormRef = ref(null);
+const currentAssignment = ref(null);
 
-// 修改数据源，添加startDate字段
-const allAssignments = ref([
-  {
-    id: 'hw001',
-    name: '第一章习题',
-    description: '完成课本第一章的课后习题1-10',
-    status: 'pending', // 'pending', 'draft', 'archived'
-    startDate: '2025-06-25',
-    deadline: '2025-07-05',
-    course: '高等数学',
-    class: ['计科2101', '计科2102'],
-    completedCount: 38,
-    totalCount: 45,
-    score: 100
-  },
-  {
-    id: 'hw002',
-    name: '函数与极限作业',
-    description: '完成函数与极限相关的20道练习题',
-    status: 'pending',
-    startDate: '2025-07-01',
-    deadline: '2025-07-10',
-    course: '高等数学',
-    class: ['计科2101'],
-    completedCount: 42,
-    totalCount: 45,
-    score: 100
-  },
-  {
-    id: 'hw003',
-    name: '期中复习卷',
-    description: '复习前五章内容，完成模拟试卷',
-    status: 'draft',
-    startDate: '2025-07-15',
-    deadline: '2025-07-20',
-    course: '线性代数',
-    class: ['软工2101'],
-    completedCount: 0,
-    totalCount: 50,
-    score: 100
-  },
-  {
-    id: 'hw004',
-    name: '项目最终报告',
-    description: '提交最终项目报告和代码',
-    status: 'archived',
-    startDate: '2025-06-20',
-    deadline: '2025-06-30',
-    course: '计算机组成原理',
-    class: ['计科2102'],
-    completedCount: 40,
-    totalCount: 40,
-    score: 100
-  },
-]);
+const allAssignments = ref([]);
 
-// --- 计算属性 ---
-const filteredAssignments = computed(() => {
-  if (!searchQuery.value) {
-    return allAssignments.value;
-  }
-  return allAssignments.value.filter(item => {
-    const term = searchQuery.value.toLowerCase();
-    const data = (item[searchType.value] || '').toString().toLowerCase();
-    return data.includes(term);
-  });
+const pagination = ref({
+  currentPage: 1,
+  pageSize: 10,
+  total: 0
 });
 
-const pendingReviewAssignments = computed(() =>
-  filteredAssignments.value.filter(a => a.status === 'pending')
-);
+const loading = ref({
+  all: false,
+});
 
-const draftAssignments = computed(() =>
-  filteredAssignments.value.filter(a => a.status === 'draft')
-);
-
-const archivedAssignments = computed(() =>
-  filteredAssignments.value.filter(a => a.status === 'archived')
-);
-
-const gradeFilterStatus = ref('all'); // 'all', 'ongoing', 'finished'
-
-const notStartedAssignments = computed(() => {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0); // 标准化到当天零点
+// 过滤后的作业列表
+const filteredAssignments = computed(() => {
+  let filtered = [...allAssignments.value];
   
-  return filteredAssignments.value.filter(item => {
-    // 筛选出草稿状态的作业
-    if (item.status !== 'draft') return false;
+  // 根据状态筛选
+  if (filterStatus.value) {
+    filtered = filtered.filter(item => item.status === filterStatus.value);
+  }
+  
+  // 根据搜索关键字筛选
+  if (searchQuery.value) {
+    const keyword = searchQuery.value.toLowerCase();
+    filtered = filtered.filter(item => 
+      item.title.toLowerCase().includes(keyword) || 
+      item.description.toLowerCase().includes(keyword)
+    );
+  }
+  
+  return filtered;
+});
+
+// 计算提交百分比
+const calculateSubmissionPercentage = (assignment) => {
+  const submittedCount = assignment.submittedCount || 0;
+  const totalCount = assignment.totalCount || 0;
+  
+  if (!totalCount) return 0;
+  return Math.round((submittedCount / totalCount) * 100);
+};
+
+// 获取提交状态
+const getSubmissionStatus = (assignment) => {
+  const submittedCount = assignment.submittedCount || 0;
+  const totalCount = assignment.totalCount || 0;
+  
+  if (!totalCount) return '';
+  
+  const percentage = calculateSubmissionPercentage(assignment);
+  if (percentage >= 90) return 'success';
+  if (percentage >= 60) return 'warning';
+  return 'exception';
+};
+
+// 获取状态类型
+const getStatusType = (status) => {
+  const types = {
+    ongoing: 'success',
+    finished: 'info',
+    pending: 'warning',
+    draft: 'danger'
+  };
+  return types[status] || 'info';
+};
+
+// 获取状态文本
+const getStatusText = (status) => {
+  const texts = {
+    ongoing: '进行中',
+    finished: '已结束',
+    pending: '未开始',
+    draft: '草稿'
+  };
+  return texts[status] || '未知';
+};
+
+// 格式化班级名称
+const formatClassNames = (classes) => {
+  if (!classes || !classes.length) return '未指定班级';
+  return classes.map(c => c.className || `班级${c.classId}`).join(', ');
+};
+
+// 格式化日期
+const formatDate = (dateString) => {
+  // 如果日期为空，直接返回未设置
+  if (!dateString) return '未设置';
+  
+  try {
+    // 尝试转换为日期对象
+    const date = new Date(dateString);
     
-    // 检查开始日期
-    if (item.startDate) {
-      const startDate = new Date(item.startDate);
-      // 如果开始日期已经到了，应该自动发布作业
-      if (startDate <= today) {
-        // 在实际项目中，这里应该调用API更新作业状态
-        // 这里为了演示，直接修改本地状态
-        item.status = 'pending';
-        return false; // 不再显示在未开始列表中
-      }
+    // 检查日期是否有效
+    if (isNaN(date.getTime())) {
+      return '未设置';
+    }
+    
+    // 使用简单的日期格式输出
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+  } catch (e) {
+    console.error('日期格式化错误:', e, dateString);
+    return '未设置';
+  }
+};
+
+// --- API调用函数 ---
+const fetchAssignments = async () => {
+  try {
+    loading.value.all = true;
+    
+    const params = {
+      page: pagination.value.currentPage,
+      size: pagination.value.pageSize,
+      keyword: searchQuery.value
+    };
+    
+    // 调用API获取作业列表
+    const response = await doGet('/api/service/assignment/creator', params);
+    
+    if (response && response.data && response.data.code === 200) {
+      const { list, total } = response.data.data;
+      allAssignments.value = list;
+      pagination.value.total = total;
+    } else {
+      ElMessage.error('获取作业列表失败');
+      allAssignments.value = [];
+      pagination.value.total = 0;
+    }
+  } catch (error) {
+    console.error('获取作业列表异常:', error);
+    ElMessage.error(`获取作业列表失败: ${error.message || '未知错误'}`);
+    allAssignments.value = [];
+    pagination.value.total = 0;
+  } finally {
+    loading.value.all = false;
+  }
+};
+
+const createAssignment = async (formData) => {
+  try {
+    // 构建请求数据
+    const requestData = {
+      title: formData.name,
+      description: formData.description || `${formData.name}的详细描述`,
+      startTime: formData.dates[0],
+      endTime: formData.dates[1],
+      totalScore: formData.score,
+      attachments: []
+    };
+
+    // 如果有选定资源，添加到附件
+    if (formData.selectedResource) {
+      requestData.attachments.push({
+        resourceId: formData.selectedResource.id,
+        resourceName: formData.selectedResource.name
+      });
+    }
+
+    const response = await doPost('/api/service/assignments', requestData);
+    
+    if (response.data.code === 200) {
+      const assignmentId = response.data.data.assignmentId;
+      
+      // 发布到班级
+      await publishAssignmentToClasses(
+        assignmentId, 
+        Array.isArray(formData.class) ? 
+          formData.class.filter(c => c !== 'all') : 
+          [formData.class],
+        formData.dates[0],
+        formData.dates[1]
+      );
+      
+      ElMessage.success('作业创建成功');
+      fetchAssignments(); // 重新获取列表
+      return true;
+    } else {
+      ElMessage.error('创建作业失败：' + response.data.message);
+      return false;
+    }
+  } catch (error) {
+    console.error('创建作业异常:', error);
+    ElMessage.error('创建作业失败，请检查网络连接');
+    return false;
+  }
+};
+
+const publishAssignmentToClasses = async (assignmentId, classIds, startTime, endTime) => {
+  try {
+    const response = await doPost(`/api/service/assignments/${assignmentId}/publish`, {
+      classIds: classIds.map(className => getClassIdByName(className)), // 这里假设有个函数转换班级名称到ID
+      startTime: startTime,
+      endTime: endTime
+    });
+    
+    if (response.data.code !== 200) {
+      throw new Error(response.data.message);
     }
     
     return true;
-  });
-});
-
-// 添加计算属性来过滤待批改作业
-const filteredPendingAssignments = computed(() => {
-  // 先获取所有待批改作业
-  let assignments = pendingReviewAssignments.value;
-  
-  // 根据选择的筛选状态进行过滤
-  if (gradeFilterStatus.value !== 'all') {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0); // 标准化到当天零点
-    
-    assignments = assignments.filter(item => {
-      const deadlineDate = new Date(item.deadline);
-      // 进行中: 截止日期在今天或之后
-      if (gradeFilterStatus.value === 'ongoing') {
-        return deadlineDate >= today;
-      } 
-      // 已结束: 截止日期在今天之前
-      else if (gradeFilterStatus.value === 'finished') {
-        return deadlineDate < today;
-      }
-      return true;
-    });
+  } catch (error) {
+    console.error('发布作业到班级失败:', error);
+    throw error;
   }
+};
+
+// 临时函数：根据班级名获取班级ID
+const getClassIdByName = (className) => {
+  // 这里应该从实际API获取班级ID，暂时返回模拟数据
+  const classMap = {
+    '软件2101': 1,
+    '计算机2102': 2,
+    '人工智能2103': 3
+  };
   
-  return assignments;
-});
-
-// --- 方法 ---
-
-const handleSearch = () => {
-  // 计算属性会自动重新计算，所以这里可以留空，或者用于触发API请求
-  console.log(`Searching for ${searchQuery.value} in ${searchType.value}`);
+  return classMap[className] || 1; // 默认返回ID 1
 };
 
-const openCreateDialog = () => {
-  currentAssignment.value = null;
-  isDialogVisible.value = true;
-};
-
-const handleFormSubmit = async () => {
+const updateAssignment = async (assignmentId, formData) => {
   try {
-    let formRef;
-    // 根据当前打开的是哪个对话框，选择对应的表单引用
-    if (editDialogVisible.value) {
-      formRef = editFormRef;
+    // 构建请求数据
+    const requestData = {
+      title: formData.name,
+      description: formData.description,
+      totalScore: formData.score,
+      attachments: []
+    };
+
+    // 如果有选定资源，添加到附件
+    if (formData.selectedResource) {
+      requestData.attachments.push({
+        resourceId: formData.selectedResource.id,
+        resourceName: formData.selectedResource.name
+      });
+    }
+
+    const response = await doPut(`/api/service/assignments/${assignmentId}`, requestData);
+    
+    if (response.data.code === 200) {
+      ElMessage.success('作业更新成功');
+      fetchAssignments(); // 重新获取列表
+      return true;
     } else {
-      formRef = createFormRef;
-    }
-    
-    if (!formRef.value) {
-      ElMessage.error('表单引用不存在');
-      return;
-    }
-    
-    // 获取表单数据
-    const formData = await formRef.value.submit();
-    console.log('表单数据:', formData);
-    
-    // 添加id，如果是编辑操作
-    if (currentAssignment.value && currentAssignment.value.id) {
-      formData.id = currentAssignment.value.id;
-    }
-    
-    if (formData.id) {
-      // 编辑操作
-      const index = allAssignments.value.findIndex(a => a.id === formData.id);
-      if (index !== -1) {
-        // 保留原始的一些字段
-        const originalAssignment = allAssignments.value[index];
-        const updatedAssignment = { 
-          ...originalAssignment,
-          name: formData.name,
-          course: formData.course,
-          class: Array.isArray(formData.class) ? 
-                formData.class.filter(c => c !== 'all') : 
-                [formData.class],
-          score: formData.score
-        };
-        
-        // 处理日期选择
-        if (formData.dates && formData.dates.length === 2) {
-          updatedAssignment.startDate = formatDate(formData.dates[0]);
-          updatedAssignment.deadline = formatDate(formData.dates[1]);
-        }
-        
-        allAssignments.value[index] = updatedAssignment;
-        ElMessage.success('作业修改成功');
-        editDialogVisible.value = false;
-      }
-    } else {
-      // 创建操作
-      const newAssignment = {
-        id: `hw${Date.now()}`,
-        name: formData.name,
-        course: formData.course,
-        class: Array.isArray(formData.class) ? 
-              formData.class.filter(c => c !== 'all') : 
-              [formData.class],
-        status: 'draft',
-        completedCount: 0,
-        totalCount: calculateTotalCount(formData.class),
-        score: formData.score,
-        description: `${formData.name}的详细描述`
-      };
-      
-      // 处理日期选择
-      if (formData.dates && formData.dates.length === 2) {
-        newAssignment.startDate = formatDate(formData.dates[0]);
-        newAssignment.deadline = formatDate(formData.dates[1]);
-        
-        // 检查开始日期是否已过，如果已过则自动设为pending状态
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const startDate = new Date(newAssignment.startDate);
-        if (startDate <= today) {
-          newAssignment.status = 'pending';
-        }
-      }
-      
-      allAssignments.value.unshift(newAssignment);
-      ElMessage.success('作业创建成功');
-      isDialogVisible.value = false;
+      ElMessage.error('更新作业失败：' + response.data.message);
+      return false;
     }
   } catch (error) {
-    ElMessage.error('表单验证失败，请检查输入');
-    console.error(error);
+    console.error('更新作业异常:', error);
+    ElMessage.error('更新作业失败，请检查网络连接');
+    return false;
   }
 };
 
-// 辅助函数：格式化日期为YYYY-MM-DD
-const formatDate = (date) => {
-  if (!date) return '';
-  const d = new Date(date);
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
+const deleteAssignmentFromAPI = async (assignmentId) => {
+  try {
+    const response = await doDelete(`/api/service/assignments/${assignmentId}`);
+    
+    if (response.data.code === 200) {
+      ElMessage.success('作业删除成功');
+      fetchAssignments(); // 重新获取列表
+      return true;
+    } else {
+      ElMessage.error('删除作业失败：' + response.data.message);
+      return false;
+    }
+  } catch (error) {
+    console.error('删除作业异常:', error);
+    ElMessage.error('删除作业失败，请检查网络连接');
+    return false;
+  }
 };
 
-// 辅助函数：计算总人数
-const calculateTotalCount = (classList) => {
-  if (!Array.isArray(classList)) return 0;
-  // 过滤掉'all'选项
-  const filteredClasses = classList.filter(c => c !== 'all');
-  // 假设每个班25人
-  return filteredClasses.length * 25;
+// 处理搜索
+const handleSearch = () => {
+  pagination.value.currentPage = 1;
+  fetchAssignments();
 };
 
-const viewDetails = (id) => {
-  router.push({ name: 'AssignmentDetail', params: { id } });
+// 处理筛选变化
+const handleFilterChange = () => {
+  pagination.value.currentPage = 1;
+  fetchAssignments(); // 状态筛选也应重新获取数据
 };
 
-const gradeAssignment = (id) => {
-  // 跳转到作业详情页面并自动打开批改对话框
-  router.push({ 
-    name: 'AssignmentDetail', 
-    params: { id },
-    query: { action: 'grade' }
-  });
+// 处理分页大小变化
+const handleSizeChange = (size) => {
+  pagination.value.pageSize = size;
+  fetchAssignments();
 };
 
-const deleteAssignment = (id) => {
-  ElMessageBox.confirm('确定要删除这项作业吗？此操作不可撤销。', '警告', {
-    confirmButtonText: '确定删除',
-    cancelButtonText: '取消',
-    type: 'warning',
-  }).then(() => {
-    allAssignments.value = allAssignments.value.filter(a => a.id !== id);
-    ElMessage.success('作业删除成功');
-  }).catch(() => {
-    ElMessage.info('已取消删除');
-  });
+// 处理页码变化
+const handleCurrentChange = (page) => {
+  pagination.value.currentPage = page;
+  fetchAssignments();
 };
 
-const handleEdit = (row) => {
-  currentAssignment.value = { ...row };
+// 打开创建对话框
+const openCreateDialog = () => {
+  createDialogVisible.value = true;
+};
+
+// 处理作业创建成功
+const handleAssignmentCreated = () => {
+  createDialogVisible.value = false;
+  fetchAssignments();
+};
+
+// 打开编辑对话框
+const openEditDialog = (assignment) => {
+  currentAssignment.value = assignment;
   editDialogVisible.value = true;
 };
+
+// 处理作业更新成功
+const handleAssignmentUpdated = () => {
+  editDialogVisible.value = false;
+  ElMessage.success('作业更新成功');
+  fetchAssignments();
+};
+
+// 确认删除作业
+const confirmDeleteAssignment = (assignment) => {
+  ElMessageBox.confirm(
+    `确定要删除作业 "${assignment.title}" 吗？此操作不可撤销。`,
+    '删除确认',
+    {
+      confirmButtonText: '删除',
+      cancelButtonText: '取消',
+      type: 'warning',
+    }
+  ).then(async () => {
+    try {
+      await doDelete(`/api/service/assignment/${assignment.assignmentId}`);
+      ElMessage.success('作业删除成功');
+      fetchAssignments(); // 重新加载列表
+    } catch (error) {
+      ElMessage.error('删除作业失败');
+    }
+  }).catch(() => {
+    // 用户取消删除
+  });
+};
+
+// 查看作业详情
+const viewAssignment = (assignmentId) => {
+  router.push(`/assignment/${assignmentId}`);
+};
+
+// 初始加载
+onMounted(() => {
+  fetchAssignments();
+});
 </script>
 
 <style scoped>
-.assignment-container {
-  padding: 24px;
+.task-assignment-container {
+  padding: 20px;
 }
 
-.action-bar {
-  margin-bottom: 20px;
-}
-
-.action-content {
+.header {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  margin-bottom: 20px;
 }
 
-.assignment-list {
-  margin-top: 20px;
+.actions {
+  display: flex;
+  gap: 10px;
 }
 
 .search-input {
-  width: 450px;
+  width: 250px;
+}
+
+.assignment-list-card {
+  margin-bottom: 20px;
 }
 
 .card-header {
@@ -453,60 +542,34 @@ const handleEdit = (row) => {
   align-items: center;
 }
 
-.assignment-list {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.assignment-card {
-  border-radius: 4px;
-}
-
-.assignment-content {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.assignment-details {
-  flex-grow: 1;
-}
-
-.assignment-details h3 {
-  margin: 0 0 8px 0;
+.header-title {
   font-size: 16px;
-  font-weight: 600;
+  font-weight: bold;
 }
 
-.assignment-details .description {
-  color: #606266;
-  font-size: 14px;
-  margin: 0 0 12px 0;
-}
-
-.assignment-details .meta {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-  font-size: 13px;
-  color: #909399;
-}
-
-.meta span {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.assignment-actions {
+.header-actions {
   display: flex;
   gap: 10px;
-  flex-shrink: 0;
-  padding-left: 20px;
 }
 
-.assignment-actions .el-button {
-  font-size: 14px;
+.assignment-title-link {
+  color: var(--el-color-primary);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.assignment-title-link:hover {
+  text-decoration: underline;
+}
+
+.empty-state {
+  padding: 40px 0;
+  text-align: center;
+}
+
+.pagination-container {
+  margin-top: 20px;
+  display: flex;
+  justify-content: center;
 }
 </style> 

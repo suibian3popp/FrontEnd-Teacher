@@ -70,13 +70,134 @@
         </el-card>
       </el-col>
     </el-row>
+
+    <!-- 调试面板 -->
+    <el-row :gutter="20" style="margin-top: 20px;" v-if="showDebugPanel">
+      <el-col :span="24">
+        <el-card>
+          <template #header>
+            <div class="card-header">
+              <h3>API调试面板</h3>
+              <el-switch v-model="showDebugPanel" active-text="显示" inactive-text="隐藏" />
+            </div>
+          </template>
+          <div class="debug-panel">
+            <el-tabs>
+              <el-tab-pane label="认证信息">
+                <div class="debug-section">
+                  <h4>当前Token</h4>
+                  <el-input v-model="debugInfo.token" type="textarea" :rows="3" readonly />
+                  
+                  <h4>Token状态</h4>
+                  <el-descriptions border>
+                    <el-descriptions-item label="是否存在">
+                      {{ debugInfo.token ? '是' : '否' }}
+                    </el-descriptions-item>
+                    <el-descriptions-item label="格式是否正确">
+                      {{ debugInfo.token && debugInfo.token.split('.').length === 3 ? '是' : '否' }}
+                    </el-descriptions-item>
+                  </el-descriptions>
+                  
+                  <h4>操作</h4>
+                  <el-button type="primary" @click="testAuth">测试认证</el-button>
+                  <el-button type="warning" @click="clearToken">清除Token</el-button>
+                </div>
+              </el-tab-pane>
+              
+              <el-tab-pane label="API测试">
+                <div class="debug-section">
+                  <h4>API请求</h4>
+                  <el-form>
+                    <el-form-item label="请求URL">
+                      <el-input v-model="debugInfo.testUrl" placeholder="/api/service/assignment/creator" />
+                    </el-form-item>
+                    <el-form-item label="请求方法">
+                      <el-radio-group v-model="debugInfo.testMethod">
+                        <el-radio label="GET">GET</el-radio>
+                        <el-radio label="POST">POST</el-radio>
+                      </el-radio-group>
+                    </el-form-item>
+                    <el-form-item label="请求参数" v-if="debugInfo.testMethod === 'GET'">
+                      <el-input v-model="debugInfo.testParams" placeholder='{"page":1,"size":10}' type="textarea" :rows="3" />
+                    </el-form-item>
+                    <el-form-item label="请求体" v-if="debugInfo.testMethod === 'POST'">
+                      <el-input v-model="debugInfo.testBody" placeholder='{"title":"测试作业","description":"测试描述"}' type="textarea" :rows="3" />
+                    </el-form-item>
+                    <el-form-item>
+                      <el-button type="primary" @click="sendTestRequest">发送请求</el-button>
+                    </el-form-item>
+                  </el-form>
+                  
+                  <h4>响应结果</h4>
+                  <el-alert
+                    v-if="debugInfo.testError"
+                    :title="debugInfo.testError"
+                    type="error"
+                    :closable="false"
+                    show-icon
+                  />
+                  <el-input 
+                    v-model="debugInfo.testResponse" 
+                    type="textarea" 
+                    :rows="8" 
+                    readonly 
+                    placeholder="响应将显示在这里"
+                  />
+                </div>
+              </el-tab-pane>
+              
+              <el-tab-pane label="网络配置">
+                <div class="debug-section">
+                  <h4>Vite代理配置</h4>
+                  <el-descriptions border>
+                    <el-descriptions-item label="/api 代理目标">
+                      http://localhost:8080
+                    </el-descriptions-item>
+                    <el-descriptions-item label="/api/service 代理目标">
+                      http://localhost:8082
+                    </el-descriptions-item>
+                  </el-descriptions>
+                  
+                  <h4>后端服务状态检查</h4>
+                  <el-button @click="checkBackendStatus('/api/health')">检查API网关</el-button>
+                  <el-button @click="checkBackendStatus('/api/service/health')">检查业务服务</el-button>
+                  
+                  <div v-if="debugInfo.backendStatus" class="backend-status">
+                    <el-tag :type="debugInfo.backendStatus.success ? 'success' : 'danger'">
+                      {{ debugInfo.backendStatus.message }}
+                    </el-tag>
+                  </div>
+                </div>
+              </el-tab-pane>
+            </el-tabs>
+          </div>
+        </el-card>
+      </el-col>
+    </el-row>
+    
+    <!-- 调试面板开关 -->
+    <div class="debug-toggle">
+      <el-button 
+        type="primary" 
+        circle 
+        @click="showDebugPanel = !showDebugPanel"
+        size="small"
+      >
+        <el-icon><Tools /></el-icon>
+      </el-button>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted, markRaw } from 'vue';
 import { useRouter } from 'vue-router';
-import { Collection, Avatar, Tickets, Files } from '@element-plus/icons-vue';
+import { Collection, Avatar, Tickets, Files, Calendar, Document, Bell, Tools } from '@element-plus/icons-vue';
+import BarChart from './BarChart.vue';
+import { getToken, removeToken } from '../utils/auth';
+import { doGet, doPost } from '../http/httpRequest';
+import { ElMessage } from 'element-plus';
+import axios from 'axios';
 
 const router = useRouter();
 
@@ -85,10 +206,10 @@ const currentDate = computed(() => new Date().toLocaleDateString('zh-CN', { year
 
 // 2. 数据卡片 (图标与数据)
 const stats = ref([
-  { title: '课程数量', value: 8, icon: Collection },
-  { title: '学生数量', value: 152, icon: Avatar },
-  { title: '任务数量', value: 6, icon: Tickets },
-  { title: '个人资源', value: 24, icon: Files },
+  { title: '课程数量', value: 8, icon: markRaw(Collection) },
+  { title: '学生数量', value: 152, icon: markRaw(Avatar) },
+  { title: '任务数量', value: 6, icon: markRaw(Tickets) },
+  { title: '个人资源', value: 24, icon: markRaw(Files) },
 ]);
 
 // 3. 列表卡片数据
@@ -116,6 +237,149 @@ const activeStudents = ref([
 const goTo = (path) => {
   router.push(path);
 };
+
+// 调试面板相关
+const showDebugPanel = ref(false);
+const debugInfo = ref({
+  token: '',
+  testUrl: '/api/service/assignment/creator',
+  testMethod: 'GET',
+  testParams: '{"page":1,"size":10}',
+  testBody: '{}',
+  testResponse: '',
+  testError: '',
+  backendStatus: null
+});
+
+// 获取并显示当前token
+const updateTokenInfo = () => {
+  debugInfo.value.token = getToken() || '无';
+};
+
+// 测试认证
+const testAuth = async () => {
+  try {
+    const response = await doGet('/api/service/user/info');
+    debugInfo.value.testResponse = JSON.stringify(response.data, null, 2);
+    debugInfo.value.testError = '';
+    ElMessage.success('认证成功');
+  } catch (error) {
+    debugInfo.value.testError = `认证失败: ${error.message}`;
+    debugInfo.value.testResponse = '';
+  }
+};
+
+// 清除token
+const clearToken = () => {
+  removeToken();
+  updateTokenInfo();
+  ElMessage.success('Token已清除');
+};
+
+// 发送测试请求
+const sendTestRequest = async () => {
+  try {
+    debugInfo.value.testError = '';
+    debugInfo.value.testResponse = '';
+    
+    let response;
+    if (debugInfo.value.testMethod === 'GET') {
+      let params = {};
+      try {
+        params = JSON.parse(debugInfo.value.testParams || '{}');
+      } catch (e) {
+        ElMessage.warning('参数格式错误，请检查JSON格式');
+        debugInfo.value.testError = `参数解析失败: ${e.message}`;
+        return;
+      }
+      
+      // 直接使用axios而不是封装的doGet，以便查看原始响应
+      response = await axios.get(debugInfo.value.testUrl, { params });
+    } else {
+      let body = {};
+      try {
+        body = JSON.parse(debugInfo.value.testBody || '{}');
+      } catch (e) {
+        ElMessage.warning('请求体格式错误，请检查JSON格式');
+        debugInfo.value.testError = `请求体解析失败: ${e.message}`;
+        return;
+      }
+      
+      // 直接使用axios而不是封装的doPost，以便查看原始响应
+      response = await axios.post(debugInfo.value.testUrl, body);
+    }
+    
+    // 处理响应
+    if (response.status === 200) {
+      // 显示完整响应，包括headers
+      const responseData = {
+        status: response.status,
+        statusText: response.statusText,
+        headers: response.headers,
+        data: response.data
+      };
+      
+      debugInfo.value.testResponse = JSON.stringify(responseData, null, 2);
+      ElMessage.success('请求成功');
+    } else {
+      debugInfo.value.testError = `请求返回非200状态码: ${response.status} ${response.statusText}`;
+      debugInfo.value.testResponse = JSON.stringify(response.data, null, 2);
+    }
+  } catch (error) {
+    console.error('测试请求失败:', error);
+    
+    // 详细的错误信息
+    if (error.response) {
+      // 服务器返回了错误响应
+      const errorData = {
+        status: error.response.status,
+        statusText: error.response.statusText,
+        headers: error.response.headers,
+        data: error.response.data
+      };
+      
+      debugInfo.value.testError = `请求失败: 服务器返回 ${error.response.status} ${error.response.statusText}`;
+      debugInfo.value.testResponse = JSON.stringify(errorData, null, 2);
+    } else if (error.request) {
+      // 请求已发送但没有收到响应
+      debugInfo.value.testError = `请求失败: 服务器无响应 - ${error.message}`;
+      debugInfo.value.testResponse = JSON.stringify(error.request, null, 2);
+    } else {
+      // 请求配置出错
+      debugInfo.value.testError = `请求配置错误: ${error.message}`;
+    }
+  }
+};
+
+// 检查后端服务状态
+const checkBackendStatus = async (url) => {
+  try {
+    debugInfo.value.backendStatus = null;
+    const response = await axios.get(url, { timeout: 3000 });
+    debugInfo.value.backendStatus = {
+      success: true,
+      message: `服务正常 (${url})`
+    };
+  } catch (error) {
+    debugInfo.value.backendStatus = {
+      success: false,
+      message: `服务异常: ${error.message} (${url})`
+    };
+  }
+};
+
+// 初始化调试信息
+onMounted(() => {
+  updateTokenInfo();
+  
+  // 添加键盘快捷键 Ctrl+Shift+D 切换调试面板
+  document.addEventListener('keydown', (e) => {
+    if (e.ctrlKey && e.shiftKey && e.key === 'D') {
+      showDebugPanel.value = !showDebugPanel.value;
+      e.preventDefault();
+    }
+  });
+});
 </script>
 
 <style scoped>
@@ -179,5 +443,31 @@ const goTo = (path) => {
 
 .item-list li:last-child {
   border-bottom: none;
+}
+
+.debug-panel {
+  margin-top: 10px;
+}
+
+.debug-section {
+  margin-bottom: 20px;
+}
+
+.debug-section h4 {
+  margin-top: 15px;
+  margin-bottom: 10px;
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.backend-status {
+  margin-top: 10px;
+}
+
+.debug-toggle {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 100;
 }
 </style>

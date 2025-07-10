@@ -12,16 +12,6 @@
         :rules="rules"
         label-width="100px">
 
-      <!--      &lt;!&ndash; 资源名称 &ndash;&gt;-->
-      <!--      <el-form-item label="资源名称" prop="name">-->
-      <!--        <el-input-->
-      <!--            v-model="form.name"-->
-      <!--            placeholder="请输入资源名称"-->
-      <!--            @blur="checkResourceName"-->
-      <!--        />-->
-      <!--        <div v-if="nameExists" class="error-message">资源名称已存在，请选择其他名称</div>-->
-      <!--      </el-form-item>-->
-
       <!-- 资源类型 -->
       <el-form-item label="资源类型" prop="type">
         <el-select
@@ -68,7 +58,7 @@
             :on-error="resError"
             :file-list="resFileList"
             :on-change="handleFileChange"
-            :action="`http://localhost:8090/api/service/resource/upload`"
+            :action="`http://localhost:8080/api/service/resource/upload`"
             :auto-upload="false"
             :show-file-list="true">
           <img v-if="imageUrl" :src="imageUrl" class="avatar"  alt="上传的文件预览"/>
@@ -101,26 +91,20 @@
 </template>
 
 <script setup>
-
-//获取动态路由中的id参数(后续使用 目前写死)
-// const route = useRoute()
-//let ownerId=route.params.ownerId
-import {doPost} from "@/http/httpRequest";
-
-const router = useRouter()//调用路由方法
-const ownerId = ref(1000) //实际项目中应从登录状态获取
-
 import {ref, reactive } from 'vue'
 import { ElMessage } from 'element-plus'
-import {useRouter} from "vue-router";
-import {Plus} from "@element-plus/icons-vue";
+import { useRouter, useRoute } from "vue-router";
+import { Plus } from "@element-plus/icons-vue";
+import { doPost } from "@/http/httpRequest";
+import { getUser } from '../utils/auth';
+
+const router = useRouter()
+const route = useRoute()
 
 let resTip=ref("")
-// const nameExists = ref("")
 
 //响应式表单数据
 const form = reactive({
-  // name: '',
   type: '',
   difficulty: 'intermediate', //默认中级
   permission: 'private',       //默认私人
@@ -129,13 +113,7 @@ const form = reactive({
 
 //表单校验规则
 const rules = {
-  // name: [
-  //   {
-  //     required: true,
-  //     message: '请输入资源名称',
-  //     trigger: 'blur'
-  //   }
-  // ],
+
   type: [
     {
       required: true,
@@ -172,19 +150,6 @@ const handleFileChange = (file, currentResFileList) => {
 
 }
 
-// //检查资源名称是否已经存在
-// const checkResourceName = () => {
-//   if(!form.name) return
-//
-//   axios.get(`/api/resource/checkName?ownerId=${ownerId.value}&name=${encodeURIComponent(form.name)}`)
-//     .then(res => {
-//       nameExists.value=res.data.data
-//     })
-//       .catch(err => {
-//         console.log('检查名称失败',err)
-//         ElMessage.error('名称检查失败，请稍后重试')
-//       })
-// }
 
 //提交按钮
 function submitUpload () {
@@ -194,18 +159,20 @@ function submitUpload () {
       ElMessage.error('表单校验未通过，请检查！')
       return
     }
-    // if (nameExists.value) {
-    //   ElMessage.error('资源名称已存在，请选择其他名称')
-    //   return
-    // }
     if (!form.file) {
       ElMessage.error('请先选择文件！')
       return
     }
 
+    const userInfo = getUser();
+    if (!userInfo || !userInfo.userId) {
+      ElMessage.error('无法获取用户信息，请重新登录');
+      return;
+    }
+
     //构造 FormData
     const formData = new FormData()
-    formData.append('ownerId', ownerId.value)
+    formData.append('ownerId', userInfo.userId)
     formData.append('file', form.file)
     // formData.append('name', form.name)
     formData.append('type', form.type)
@@ -219,12 +186,14 @@ function submitUpload () {
             ElMessage.success('资源上传成功！')
             resetForm() //上传成功后重置表单
           } else {
+            // 此分支基本不会进入，因为非200的业务错误会在httpRequest.js中被reject
             ElMessage.error('上传失败：' + res.data.msg)
           }
         })
         .catch((err) => {
+          // 现在err是后端返回的完整错误对象，例如 { code: 5001, msg: '系统繁忙...' }
           console.error('上传请求异常：', err)
-          ElMessage.error('网络异常，请重试！')
+          ElMessage.error(`上传失败: ${err.msg || '未知错误'}`)
         })
   })
 }
@@ -240,14 +209,12 @@ function resError(){
 
 //重置表单
 const resetForm = () => {
-  // form.name = ''
   form.type = ''
   form.difficulty = 'intermediate'
   form.permission = 'private'
   form.file = null
   resFileList.value = []
   imageUrl.value = ''
-  // nameExists.value = false
   formRef.value.resetFields() //重置表单校验状态
 }
 
@@ -256,7 +223,12 @@ function goBack(){
 }
 
 function gotoResourcesList() {
-  router.push('/resource/list/' + ownerId.value);
+  const userInfo = getUser();
+  if (!userInfo || !userInfo.userId) {
+    ElMessage.error('无法获取用户信息，请重新登录');
+    return;
+  }
+  router.push('/resource/list/' + userInfo.userId);
 }
 
 </script>

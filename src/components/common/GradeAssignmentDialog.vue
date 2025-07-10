@@ -166,7 +166,7 @@ const dialogVisible = computed({
   set: (val) => emit('update:visible', val)
 });
 
-const loading = ref(false);
+const loading = computed(() => props.submission?.loading || false);
 const submitting = ref(false);
 const gradeFormRef = ref(null);
 
@@ -203,26 +203,13 @@ watch(
   { deep: true }
 );
 
-// 加载作业内容
-const loadSubmissionContent = () => {
-  loading.value = true;
-  
-  // 模拟API调用，加载作业内容
-  setTimeout(() => {
-    // 在实际项目中，这里会调用API获取作业内容
-    if (!props.submission.content && !props.submission.textContent) {
-      // 添加模拟数据，包括文本内容和附件
-      props.submission.textContent = "这是学生提交的作业文本内容\n\n软件工程需求分析报告\n\n1. 引言\n本文档描述了XX系统的需求分析...\n\n2. 功能需求\n2.1 用户管理\n系统应支持用户注册、登录...\n\n3. 非功能需求\n系统应具有良好的可用性和性能...";
-      
-      props.submission.attachments = [
-        { id: 1, name: "需求文档.pdf", size: "1.2MB", type: "PDF", url: "#" },
-        { id: 2, name: "系统设计图.png", size: "540KB", type: "图片", url: "#" },
-        { id: 3, name: "源代码.zip", size: "3.5MB", type: "压缩文件", url: "#" },
-      ];
-    }
-    
-    loading.value = false;
-  }, 500);
+// 重置表单
+const resetForm = () => {
+  gradeForm.score = 0;
+  gradeForm.comment = '';
+  gradeForm.details.forEach(detail => {
+    detail.score = 0;
+  });
 };
 
 // 获取文件类型的标签样式
@@ -247,16 +234,32 @@ const canPreview = (fileType) => {
 
 // 下载文件
 const downloadFile = (file) => {
+  if (!file.url) {
+    ElMessage.warning('文件下载链接不存在');
+    return;
+  }
+  
   ElMessage.success(`开始下载: ${file.name}`);
-  // 实际项目中应调用后端API进行文件下载
-  console.log('下载文件:', file);
+  
+  // 创建一个隐藏的a标签，模拟点击下载
+  const a = document.createElement('a');
+  a.style.display = 'none';
+  a.href = file.url;
+  a.download = file.name;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
 };
 
 // 预览文件
 const previewFile = (file) => {
-  ElMessage.info(`预览文件: ${file.name}`);
-  // 实际项目中可以使用相应的预览组件或打开新窗口预览
-  console.log('预览文件:', file);
+  if (!file.url) {
+    ElMessage.warning('文件预览链接不存在');
+    return;
+  }
+  
+  // 对于可以在浏览器中预览的文件类型，直接在新窗口打开
+  window.open(file.url, '_blank');
 };
 
 // 提交批改
@@ -268,34 +271,78 @@ const submitGrade = async () => {
     
     submitting.value = true;
     
-    // 模拟API调用，提交批改结果
-    setTimeout(() => {
-      // 在实际项目中，这里会调用API提交批改结果
-      console.log('提交批改结果:', {
-        submissionId: props.submission.id,
-        studentId: props.submission.studentId,
-        score: gradeForm.score,
-        comment: gradeForm.comment,
-        details: gradeForm.details
-      });
-      
-      submitting.value = false;
-      ElMessage.success('批改成功');
-      
-      // 通知父组件批改完成
+    // 准备提交的批阅数据
+    const gradeData = {
+      submissionId: props.submission.id,
+      score: gradeForm.score,
+      comments: gradeForm.comment || ''
+    };
+    
+    console.log('提交的批阅数据:', gradeData);
+    
+    // 调用API提交批阅结果
+    const response = await doPost(`/api/service/assignment/submission/${props.submission.id}/grade`, gradeData);
+    
+    if (response.data.code === 200) {
+      ElMessage.success('批阅成功');
       emit('graded', {
         ...props.submission,
         score: gradeForm.score,
         comment: gradeForm.comment,
         status: '已批改'
       });
-      
-      // 关闭对话框
       dialogVisible.value = false;
-    }, 1000);
+    } else {
+      ElMessage.error(`批阅失败: ${response.data.message || '未知错误'}`);
+    }
   } catch (error) {
-    console.error('表单验证失败', error);
-    ElMessage.error('请完成所有必填项');
+    console.error('批阅提交异常:', error);
+    ElMessage.error(`批阅失败: ${error.message || '未知错误'}`);
+  } finally {
+    submitting.value = false;
+  }
+};
+
+// 获取提交详情
+const fetchSubmissionDetail = async (submissionId) => {
+  if (!submissionId) return;
+  
+  try {
+    loading.value = true;
+    const response = await doGet(`/api/service/assignment/submission/${submissionId}`);
+    
+    if (response.data.code === 200) {
+      submissionDetail.value = response.data.data || {};
+      
+      // 如果已经批改过，加载之前的批改信息
+      if (submissionDetail.value.score) {
+        gradeForm.score = submissionDetail.value.score;
+        gradeForm.comment = submissionDetail.value.comments || '';
+      }
+    } else {
+      ElMessage.error(`获取提交详情失败: ${response.data.message || '未知错误'}`);
+    }
+  } catch (error) {
+    console.error('获取提交详情异常:', error);
+  } finally {
+    loading.value = false;
+  }
+};
+
+// 查看提交的作业内容
+const viewSubmissionContent = async (submissionId) => {
+  if (!submissionId) return;
+  
+  try {
+    const response = await doGet(`/api/service/assignment/submission/${submissionId}/content`);
+    if (response.data.code === 200) {
+      window.open(response.data.data.url, '_blank');
+    } else {
+      ElMessage.error(`无法查看提交内容: ${response.data.message || '未知错误'}`);
+    }
+  } catch (error) {
+    console.error('查看提交内容异常:', error);
+    ElMessage.error('无法查看提交内容');
   }
 };
 
@@ -305,12 +352,12 @@ const handleClose = () => {
   dialogVisible.value = false;
 };
 
-// 当对话框打开时加载作业内容
+// 当对话框打开时重置表单
 watch(
   () => dialogVisible.value,
   (val) => {
     if (val) {
-      loadSubmissionContent();
+      resetForm();
     }
   }
 );

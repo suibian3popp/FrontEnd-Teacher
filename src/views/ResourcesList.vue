@@ -193,7 +193,7 @@
                 type="primary"
                 size="small"
                 class="operation-btn"
-                @click="handleDownload(scope.row.resourceId)">
+                @click="handleDownload(scope.row)">
               下载
             </el-button>
             <el-button
@@ -233,8 +233,9 @@
 <script setup>
 import {ref, reactive, onMounted, computed} from 'vue'
 import { ElMessage} from 'element-plus'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import {doDelete, doGet} from "@/http/httpRequest";
+import { getUser } from '../utils/auth';
 import axios from "axios";
 import qs from 'qs';
 import dayjs from "dayjs";
@@ -244,7 +245,6 @@ const router = useRouter()
 //获取动态路由中的id参数
 // let route=useRoute()
 // let ownerId=route.params.ownerId
-const ownerId = ref(1000)
 
 //筛选表单数据
 const filterForm = reactive({
@@ -312,8 +312,15 @@ const formattedResourceList = computed(() => {
 
 //获取资源列表数据
 //根据用户id获取查询
-const fetchResources = async () => {
+const fetchResources = () => {
   loading.value = true
+
+  const userInfo = getUser();
+  if (!userInfo || !userInfo.userId) {
+    ElMessage.error('无法获取用户信息，请重新登录');
+    loading.value = false;
+    return;
+  }
 
   //构造请求参数
   const params = {
@@ -324,7 +331,7 @@ const fetchResources = async () => {
 
   const serializedParams = qs.stringify(params, { arrayFormat: 'brackets' });
 
-  doGet(`/api/service/resource/list/${ownerId.value}?${serializedParams}`)
+  doGet(`/api/service/resource/list/${userInfo.userId}?${serializedParams}`)
       .then((res) => {
         if (res.data.code === 200) {
           resourceList.value = res.data.data.records
@@ -373,23 +380,42 @@ const resetFilter = () => {
   fetchResources()
 }
 
-//资源下载 使用iframe
-function handleDownload(resourceId){
-  let iframe = document.createElement("iframe");
-  iframe.src = axios.defaults.baseURL + "/api/service/resource/download/" +resourceId;
-  iframe.style.display = "none";
-  document.body.appendChild(iframe);}
+//资源下载
+const handleDownload = async (row) => {
+  if (!row || !row.resourceId) {
+    ElMessage.error('无效的资源信息');
+    return;
+  }
 
-// const handleDownload = (row) => {
-//   const downloadUrl = `/api/resources/download/${row.id}`
-//   const a = document.createElement('a')
-//   a.href = downloadUrl
-//   a.download = row.name
-//   a.style.display = 'none'
-//   document.body.appendChild(a)
-//   a.click()
-//   document.body.removeChild(a)
-// }
+  const resourceId = row.resourceId;
+  const fileName = row.name || `resource-${resourceId}`; // 使用行数据中的name，提供备用
+
+  try {
+    const response = await axios({
+      url: `/api/service/resource/download/${resourceId}`,
+      method: 'GET',
+      responseType: 'blob', // 关键：期望响应是二进制数据
+    });
+
+    // 创建一个指向Blob的URL
+    const url = window.URL.createObjectURL(new Blob([response.data]));
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', fileName); // 直接使用从表格行数据中获取的文件名
+    document.body.appendChild(link);
+    link.click();
+
+    // 清理
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+    ElMessage.success('下载任务已开始');
+
+  } catch (error) {
+    console.error('下载失败:', error);
+    ElMessage.error('下载失败，请检查网络或登录状态');
+  }
+};
+
 
 //资源查看
 const handleView = (row) => {
@@ -399,10 +425,15 @@ const handleView = (row) => {
     ElMessage.error('资源ID获取失败，请检查数据');
     return;
   }
+  const userInfo = getUser();
+  if (!userInfo || !userInfo.userId) {
+    ElMessage.error('无法获取用户信息，请重新登录');
+    return;
+  }
   router.push({
     path: '/resource/preview',
     query:{id:resourceId,
-      ownerId:ownerId.value}
+      ownerId:userInfo.userId}
   })
 }
 
@@ -430,9 +461,14 @@ function handleDelete(row) {
 
 //跳转到上传页面
 const toUploadPage = () => {
+  const userInfo = getUser();
+  if (!userInfo || !userInfo.userId) {
+    ElMessage.error('无法获取用户信息，请重新登录');
+    return;
+  }
   router.push({
     path: '/resource/upload',
-    query: { ownerId: ownerId.value } // 传递用户ID到上传页
+    query: { ownerId: userInfo.userId } // 传递用户ID到上传页
   })
 }
 

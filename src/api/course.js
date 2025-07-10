@@ -6,8 +6,7 @@ import axios from './axios';
  * @returns {Promise} 课程列表数据
  */
 export const getTeacherCourses = (teacherId) => {
-  // 注意：后端的URL是 /service/courses/teacher/{teacherId}
-  return axios.get(`/service/courses/teacher/${teacherId}`);
+  return axios.get(`/api/service/courses/teacher/${teacherId}`);
 };
 
 /**
@@ -16,7 +15,7 @@ export const getTeacherCourses = (teacherId) => {
  * @returns {Promise}
  */
 export const createCourse = (courseData) => {
-  return axios.post('/service/courses', courseData);
+  return axios.post('/api/service/courses', courseData);
 };
 
 /**
@@ -25,7 +24,7 @@ export const createCourse = (courseData) => {
  * @returns {Promise}
  */
 export const deleteCourse = (courseId) => {
-  return axios.delete(`/service/courses/${courseId}`);
+  return axios.delete(`/api/service/courses/${courseId}`);
 };
 
 /**
@@ -34,7 +33,7 @@ export const deleteCourse = (courseId) => {
  * @returns {Promise} 章节列表数据
  */
 export const getCourseChapters = (courseId) => {
-  return axios.get(`/service/courses/${courseId}/chapters`);
+  return axios.get(`/api/service/courses/${courseId}/chapters`);
 };
 
 /**
@@ -43,7 +42,7 @@ export const getCourseChapters = (courseId) => {
  * @returns {Promise}
  */
 export const addChapter = (chapterData) => {
-  return axios.post('/service/chapters', chapterData);
+  return axios.post('/api/service/chapters', chapterData);
 };
 
 /**
@@ -52,7 +51,7 @@ export const addChapter = (chapterData) => {
  * @returns {Promise}
  */
 export const deleteChapter = (chapterId) => {
-  return axios.delete(`/service/chapters/${chapterId}`);
+  return axios.delete(`/api/service/chapters/${chapterId}`);
 };
 
 /**
@@ -62,5 +61,5 @@ export const deleteChapter = (chapterId) => {
  * @returns {Promise}
  */
 export const updateChapter = (chapterId, chapterData) => {
-  return axios.patch(`/service/chapters/update/${chapterId}`, chapterData);
+  return axios.patch(`/api/service/chapters/update/${chapterId}`, chapterData);
 }; 

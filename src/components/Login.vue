@@ -1,6 +1,40 @@
 <template>
   <div class="login-container">
+    <!-- 添加临时的快速登录功能 -->
+    <el-card v-if="showDebugPanel" class="debug-card">
+      <div class="debug-header">
+        <h3>开发测试工具</h3>
+        <el-button size="small" @click="showDebugPanel = false">关闭</el-button>
+      </div>
+      <div class="debug-content">
+        <p>当前状态: {{ checkLoginStatus() ? '已登录' : '未登录' }}</p>
+        <el-divider content-position="left">快速登录</el-divider>
+        <div class="quick-login">
+          <el-button type="primary" @click="quickLogin('teacher', '123456')" :loading="loading">
+            以教师身份登录
+          </el-button>
+          <el-button type="success" @click="quickLogin('admin', 'admin123')" :loading="loading">
+            以管理员身份登录
+          </el-button>
+        </div>
+        <el-divider content-position="left">Token 信息</el-divider>
+        <div class="token-info">
+          <p><strong>Token:</strong> {{ getToken() || '无' }}</p>
+          <p><strong>用户:</strong> {{ JSON.stringify(getUser()) }}</p>
+        </div>
+      </div>
+    </el-card>
+    
     <el-card class="login-card" shadow="always">
+      <!-- 添加开发者模式按钮 -->
+      <el-button 
+        class="debug-button" 
+        type="info" 
+        text 
+        @click="showDebugPanel = !showDebugPanel">
+        {{ showDebugPanel ? '隐藏开发工具' : '开发者工具' }}
+      </el-button>
+      
       <!-- 标题/Logo -->
       <div class="login-logo">智慧教学支持平台</div>
       
@@ -83,14 +117,17 @@
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElLoading } from 'element-plus'
 import { User, Lock, Message, Phone } from '@element-plus/icons-vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { login, register } from '../api/auth'
-import { setToken, setUser } from '../utils/auth'
+import { setToken, setUser, getToken, getUser } from '../utils/auth'
+import axios from 'axios'
 
 const router = useRouter()
+const route = useRoute()
 const activeTab = ref('login')
 const showLoginPassword = ref(false)
 const loading = ref(false)
+const showDebugPanel = ref(false)
 
 // 表单引用
 const loginFormRef = ref(null)
@@ -209,69 +246,94 @@ const registerRules = {
 
 // 填充测试账号
 const useTestAccount = () => {
-  loginForm.username = 'teacher'
+  // 使用系统中真实存在的测试账号
+  loginForm.username = 'teacher'  // 改成后端提供的有效账号
   loginForm.password = '123456'
   ElMessage.info('已填充测试账号，点击登录即可进入系统')
 }
 
-// 处理登录成功
-const handleLoginSuccess = (res) => {
-  // 获取token，可能在不同位置，优先检查accessToken(JWT标准名称)
-  const token = res.accessToken || res.data?.token || res.token
-  const user = {
-    userId: res.userId,
-    username: res.username,
-    userType: res.userType,
-    realName: res.realName,
-    departmentId: res.departmentId,
-    departmentName: res.department
-  }
-  
-  if (token) {
-    setToken(token)
-    setUser(user)
-    ElMessage.success('登录成功')
-    router.push('/dashboard')
-  } else {
-    ElMessage.warning('登录成功但未获取到令牌，请联系管理员')
-    console.error('登录未获取到令牌:', res)
-  }
-}
-
 // 登录处理
-const handleLogin = async () => {
-  if (!loginFormRef.value) return
-  try {
-    await loginFormRef.value.validate()
-    loading.value = true
-    
-    // 只使用标准JSON格式
-    const loginData = {
-      username: loginForm.username,
-      password: loginForm.password
-    }
-    
-    console.log('登录请求数据:', loginData)
-    let res = await login(loginData)
-    loading.value = false
-    
-    console.log('登录响应数据:', res)
-    
-    // 更灵活的成功判断 - 检查accessToken或其他token形式
-    if (res && (res.code === 200 || res.token || res.accessToken)) {
-      handleLoginSuccess(res)
+const handleLogin = () => {
+  loginFormRef.value.validate(async (valid) => {
+    if (valid) {
+      loading.value = true;
+      try {
+        const response = await login(loginForm);
+        // 修正：login() 函数已返回 response.data，所以此处应直接传递 response
+        handleLoginSuccess(response); 
+      } catch (error) {
+        // 统一处理错误
+        console.error("登录失败:", error);
+        ElMessage.error(
+          error.response?.data?.message || "登录失败，请检查您的凭据"
+        );
+      } finally {
+        loading.value = false;
+      }
     } else {
-      ElMessage.error(res?.message || '登录失败')
-      console.error('登录失败详情:', res)
+      ElMessage.error("请检查输入是否正确");
     }
-  } catch (error) {
-    loading.value = false
-    ElMessage.error(error.message || '登录异常')
-    console.error('登录异常详情:', error)
-  }
-}
+  });
+};
 
-// 注册处理
+// 统一的登录成功处理器
+const handleLoginSuccess = (responseData) => {
+  // 移除一层多余的 .data，因为我们现在直接传入数据
+  
+  // 检查并提取Token，兼容 'token' 和 'accessToken'
+  const token = responseData.token || responseData.accessToken;
+  if (!token) {
+    ElMessage.error('登录失败：服务器响应中未找到有效的Token');
+    console.error('Token缺失:', responseData);
+    return;
+  }
+  setToken(token);
+
+  // 检查并提取User对象
+  let user = responseData.user;
+  
+  // 如果响应中没有user对象，但token是JWT，尝试从token中解析
+  if (!user && typeof token === 'string' && token.includes('.')) {
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      // 确保从payload中构建一个完整的user对象
+      user = {
+        userId: payload.userId || payload.sub, // 统一存储为 userId
+        username: payload.username,
+        role: payload.role,
+        realName: payload.realName
+      };
+    } catch (e) {
+      console.error('从Token解析用户信息失败:', e);
+    }
+  }
+
+  // 核心逻辑：确保最终存入的用户对象有userId
+  if (user && typeof user === 'object') {
+    // 如果存在id但不存在userId，则进行转换
+    if (user.id && !user.userId) {
+      user.userId = user.id;
+      delete user.id;
+    }
+
+    if (user.userId) {
+      setUser(user);
+      ElMessage.success('登录成功');
+
+      // 跳转到目标页面，默认为/dashboard
+      const redirect = route.query.redirect || '/dashboard';
+      router.push(redirect);
+    } else {
+      ElMessage.error('登录失败：无法从服务器响应中获取到有效的用户信息');
+      console.error('用户信息缺失或格式不正确:', responseData);
+    }
+  } else {
+    ElMessage.error('登录失败：无法从服务器响应中获取到有效的用户信息');
+    console.error('用户信息缺失或格式不正确:', responseData);
+  }
+};
+
+
 const handleRegister = async () => {
   if (!registerFormRef.value) return
   try {
@@ -316,6 +378,62 @@ const handleRegister = async () => {
     console.error('注册异常详情:', error)
   }
 }
+
+// 组件挂载时执行
+onMounted(() => {
+  // 检查当前登录状态
+  checkLoginStatus()
+})
+
+// 检查当前登录状态
+const checkLoginStatus = () => {
+  const token = getToken()
+  const user = getUser()
+  
+  if (token && user) {
+    console.log('检测到已登录用户:', user.username)
+    const redirectPath = route.query.redirect || '/dashboard'
+    router.push(redirectPath)
+  }
+}
+
+// 快速登录功能
+const quickLogin = async (username, password) => {
+  try {
+    loading.value = true;
+    console.log(`尝试快速登录: ${username}`);
+    
+    // 显示调试信息
+    ElMessage.info(`正在尝试登录: ${username}，请稍候...`);
+    
+    const loginData = { username, password };
+    console.log('登录请求数据:', loginData);
+    console.log('请求URL:', '/api/auth/login');
+    
+    // 直接使用axios发送登录请求，以便完整查看请求细节
+    const response = await axios.post('/api/auth/login', loginData, {
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    console.log('登录原始响应:', response);
+    
+    const res = response.data;
+    console.log('登录响应数据:', res);
+    
+    if (res && (res.code === 200 || res.token || res.accessToken)) {
+      handleLoginSuccess(res);
+    } else {
+      ElMessage.error(res?.message || '登录失败');
+    }
+  } catch (error) {
+    console.error('快速登录异常:', error.response?.data || error.message);
+    ElMessage.error(`登录失败: ${error.response?.data?.message || error.message}`);
+  } finally {
+    loading.value = false;
+  }
+};
 </script>
 
 <style scoped>
@@ -378,5 +496,48 @@ const handleRegister = async () => {
 
 :deep(.el-form-item__label) {
   font-weight: 500;
+}
+
+.debug-card {
+  position: fixed;
+  top: 50px;
+  right: 50px;
+  width: 400px;
+  z-index: 100;
+  border: 2px solid #409EFF;
+}
+
+.debug-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.debug-content {
+  font-size: 14px;
+}
+
+.debug-button {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  font-size: 12px;
+}
+
+.quick-login {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+.token-info {
+  background-color: #f8f8f8;
+  padding: 10px;
+  border-radius: 4px;
+  font-family: monospace;
+  overflow-x: auto;
+  font-size: 12px;
+  word-break: break-all;
 }
 </style>

@@ -1,359 +1,415 @@
 <template>
-    <el-form ref="formRef" :model="form" :rules="rules" label-width="100px">
-      <el-form-item label="作业名称" prop="name">
-        <el-input v-model="form.name" placeholder="请输入作业名称" />
-      </el-form-item>
-      <el-form-item label="所属课程" prop="course">
-        <el-select v-model="form.course" placeholder="请选择课程">
-          <el-option label="软件工程" value="软件工程" />
-          <el-option label="计算机网络" value="计算机网络" />
-          <el-option label="操作系统" value="操作系统" />
-        </el-select>
-      </el-form-item>
-      <el-form-item label="所属班级" prop="class">
-        <el-select
-          v-model="form.class"
-          multiple
-          collapse-tags
-          collapse-tags-tooltip
-          placeholder="请选择班级 (可多选)"
-          style="width: 100%;"
-          @change="handleClassChange"
-        >
-          <el-option
-            key="all"
-            label="全选"
-            value="all"
-          />
-          <el-option v-for="c in classes" :key="c" :label="c" :value="c" />
-        </el-select>
-      </el-form-item>
-      <el-form-item label="起止日期" prop="dates">
-        <el-date-picker
-          v-model="form.dates"
-          type="daterange"
-          range-separator="至"
-          start-placeholder="开始日期"
-          end-placeholder="截止日期"
-          style="width: 100%;"
-        />
-      </el-form-item>
-      <el-form-item label="总分数" prop="score">
-        <el-input-number v-model="form.score" :min="1" :max="150" />
-      </el-form-item>
-      <el-form-item label="作业描述" prop="description">
-        <el-input
-          v-model="form.description"
-          type="textarea"
-          :rows="4"
-          placeholder="请输入作业描述内容"
-        />
-      </el-form-item>
-      <el-form-item label="作业附件" prop="fileList">
-        <div class="attachment-options">
-          <div class="upload-option">
-            <el-upload
-              v-model:file-list="form.fileList"
-              class="upload-demo"
-              action="#"
-              :auto-upload="false"
-              :limit="1"
-            >
-              <el-button type="primary">从电脑选择</el-button>
-              <template #tip>
-                <div class="el-upload__tip">
-                  只能上传一份文件，大小不超过 10MB
-                </div>
-              </template>
-            </el-upload>
-          </div>
-          <div class="or-divider">或</div>
-          <div class="resource-option">
-            <el-button type="success" @click="showResourceLibrary = true">
-              从资源库选择
-            </el-button>
-            <div v-if="form.selectedResource" class="selected-resource">
-              已选择: {{ form.selectedResource.name }}
-            </div>
-          </div>
-        </div>
-      </el-form-item>
-    </el-form>
-
-    <!-- 资源库选择对话框 -->
-    <el-dialog
-      v-model="showResourceLibrary"
-      title="选择资源"
-      width="680px"
-    >
-      <div class="resource-search">
-        <el-input
-          v-model="resourceSearchQuery"
-          placeholder="搜索资源名称"
-          clearable
-          class="resource-search-input"
-        >
-          <template #prefix>
-            <el-icon><Search /></el-icon>
-          </template>
-        </el-input>
-      </div>
-      
-      <el-table
-        :data="filteredResources"
-        stripe
-        style="width: 100%; margin-top: 15px;"
-        @row-click="handleResourceSelect"
-        highlight-current-row
-      >
-        <el-table-column type="selection" width="55" />
-        <el-table-column prop="name" label="资源名称" />
-        <el-table-column prop="type" label="类型">
-          <template #default="{ row }">
-            <el-tag :type="getTagType(row.type)">{{ row.type }}</el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="size" label="大小" />
-        <el-table-column prop="updateTime" label="更新时间" />
-      </el-table>
-      
-      <template #footer>
-        <span class="dialog-footer">
-          <el-button @click="showResourceLibrary = false">取消</el-button>
-          <el-button type="primary" @click="confirmResourceSelection">
-            确认选择
-          </el-button>
-        </span>
-      </template>
-    </el-dialog>
-  </template>
-  
-  <script setup>
-  import { ref, watch, computed } from 'vue';
-  import { Search } from '@element-plus/icons-vue';
-  
-  const props = defineProps({
-    initialData: {
-      type: Object,
-      default: null
-    }
-  });
-  
-  const formRef = ref(null);
-  const form = ref({
-    name: '',
-    course: '',
-    class: [],
-    dates: [],
-    score: 100,
-    description: '',
-    fileList: [],
-    selectedResource: null, // 新增：存储选中的资源
-  });
-  
-  const classes = ref(['软件2101', '计算机2102', '人工智能2103']);
-  let oldSelectedClasses = []; // 用于跟踪上一次的选择
-  
-  // 资源库相关
-  const showResourceLibrary = ref(false);
-  const resourceSearchQuery = ref('');
-  const selectedResourceId = ref(null);
-  
-  // 模拟资源库数据
-  const resourceLibrary = ref([
-    { id: 1, name: '第一章习题集.pdf', type: 'PDF', size: '2.5MB', updateTime: '2024-07-20' },
-    { id: 2, name: '函数图像绘制工具.exe', type: '可执行文件', size: '5.1MB', updateTime: '2024-07-18' },
-    { id: 3, name: '矩阵计算公式.docx', type: 'Word文档', size: '1.2MB', updateTime: '2024-07-15' },
-    { id: 4, name: '课程思维导图.xmind', type: '思维导图', size: '0.8MB', updateTime: '2024-07-10' },
-    { id: 5, name: '软件工程案例分析.pptx', type: 'PPT演示文稿', size: '3.6MB', updateTime: '2024-07-05' },
-    { id: 6, name: '实验操作视频.mp4', type: '视频', size: '15.2MB', updateTime: '2024-06-30' },
-    { id: 7, name: '编程练习题.zip', type: '压缩包', size: '4.7MB', updateTime: '2024-06-25' },
-  ]);
-  
-  // 根据搜索条件过滤资源
-  const filteredResources = computed(() => {
-    if (!resourceSearchQuery.value) {
-      return resourceLibrary.value;
-    }
-    const query = resourceSearchQuery.value.toLowerCase();
-    return resourceLibrary.value.filter(resource => 
-      resource.name.toLowerCase().includes(query) || 
-      resource.type.toLowerCase().includes(query)
-    );
-  });
-  
-  // 根据资源类型获取标签类型
-  const getTagType = (type) => {
-    const typeMap = {
-      'PDF': 'danger',
-      'Word文档': 'primary',
-      'PPT演示文稿': 'warning',
-      '压缩包': 'info',
-      '视频': 'success'
-    };
-    return typeMap[type] || '';
-  };
-  
-  // 选择资源行
-  const handleResourceSelect = (row) => {
-    selectedResourceId.value = row.id;
-  };
-  
-  // 确认资源选择
-  const confirmResourceSelection = () => {
-    if (selectedResourceId.value) {
-      const selectedResource = resourceLibrary.value.find(r => r.id === selectedResourceId.value);
-      if (selectedResource) {
-        form.value.selectedResource = selectedResource;
-        // 如果已经选择了上传文件，清空它
-        form.value.fileList = [];
-      }
-    }
-    showResourceLibrary.value = false;
-  };
-  
-  watch(() => props.initialData, (newData) => {
-    if (newData) {
-      // 填充表单数据
-      form.value.name = newData.name || '';
-      form.value.course = newData.course || '';
-      
-      // 处理班级数据
-      if (Array.isArray(newData.class)) {
-        form.value.class = [...newData.class]; // 直接使用数组
-      } else if (typeof newData.class === 'string') {
-        form.value.class = newData.class.split(', '); // 将字符串转回数组
-      } else {
-        form.value.class = [];
-      }
-      
-      // 处理日期数据
-      if (newData.startDate && newData.deadline) {
-        form.value.dates = [
-          new Date(newData.startDate),
-          new Date(newData.deadline)
-        ];
-      } else {
-        form.value.dates = [];
-      }
-      
-      // 设置分数
-      form.value.score = newData.score || 100;
-      
-      // 设置描述
-      form.value.description = newData.description || '';
-      
-      // 更新旧班级选择，以便全选功能正常工作
-      oldSelectedClasses = [...form.value.class];
-    } else {
-      // 重置表单
-      form.value = { 
-        name: '', 
-        course: '', 
-        class: [], 
-        dates: [], 
-        score: 100, 
-        description: '',
-        fileList: [],
-        selectedResource: null 
-      };
-      oldSelectedClasses = [];
-    }
-  }, { immediate: true });
-  
-  const handleClassChange = (selected) => {
-    // 检查是否是点击了"全选"
-    const isSelectAll = selected.includes('all');
-    const wasSelectAll = oldSelectedClasses.includes('all');
-  
-    if (isSelectAll && !wasSelectAll) {
-      // 如果本次点击了全选，且上次没有全选，则全选所有班级
-      form.value.class = ['all', ...classes.value];
-    } else if (!isSelectAll && wasSelectAll) {
-      // 如果本次取消了全选，则清空所有选择
-      form.value.class = [];
-    } else if (isSelectAll && selected.length - 1 < classes.value.length) {
-      // 如果在全选状态下取消了某个班级，则取消全选状态
-      form.value.class = selected.filter(item => item !== 'all');
-    } else if (!isSelectAll && selected.length === classes.value.length) {
-      // 如果手动选满了所有班级，则自动勾选上全选
-      form.value.class = ['all', ...selected];
-    }
+  <el-form ref="formRef" :model="form" :rules="rules" label-width="100px">
+    <el-form-item label="作业标题" prop="title">
+      <el-input v-model="form.title" placeholder="请输入作业标题" />
+    </el-form-item>
     
-    // 更新旧选择
-    oldSelectedClasses = [...form.value.class];
-  };
+    <el-form-item label="关联班级" prop="classIds">
+      <el-select
+        v-model="form.classIds"
+        multiple
+        filterable
+        collapse-tags
+        collapse-tags-tooltip
+        placeholder="请选择班级 (可多选)"
+        style="width: 100%;"
+        :loading="loading.classes"
+        @change="handleClassChange"
+      >
+        <el-option
+          v-if="classes.length > 0"
+          key="all"
+          label="全选"
+          value="all"
+        />
+        <el-option 
+          v-for="c in classes" 
+          :key="c.classId" 
+          :label="c.className" 
+          :value="c.classId" 
+        />
+      </el-select>
+    </el-form-item>
+
+    <el-form-item label="截止日期" prop="deadline">
+      <el-date-picker
+        v-model="form.deadline"
+        type="datetime"
+        placeholder="请选择作业截止日期"
+        style="width: 100%;"
+      />
+    </el-form-item>
+
+    <el-form-item label="作业总分" prop="totalScore">
+      <el-input-number v-model="form.totalScore" :min="0" :max="1000" />
+    </el-form-item>
+
+    <el-form-item label="作业描述" prop="description">
+      <el-input
+        v-model="form.description"
+        type="textarea"
+        :rows="4"
+        placeholder="请输入作业的详细要求和说明"
+      />
+    </el-form-item>
+
+    <el-form-item label="作业附件" prop="resourceId">
+      <el-button 
+        type="primary" 
+        @click="openResourceLibrary"
+      >
+        <el-icon><Files /></el-icon>
+        从资源库选择
+      </el-button>
+      <div v-if="selectedResource" class="selected-resource">
+        <el-tag closable @close="handleRemoveResource" style="margin-top: 10px;">
+          {{ selectedResource.name }}
+        </el-tag>
+      </div>
+    </el-form-item>
+
+    <el-form-item>
+      <el-button type="primary" @click="submitForm" :loading="loading.submitting">提交</el-button>
+      <el-button @click="handleCancel">取消</el-button>
+    </el-form-item>
+  </el-form>
+
+  <!-- 资源库选择对话框 -->
+  <el-dialog
+    v-model="showResourceLibrary"
+    title="从资源库选择附件"
+    width="70%"
+    top="5vh"
+  >
+    <div class="resource-toolbar">
+      <el-input
+        v-model="resourceFilter.keyword"
+        placeholder="搜索资源名称"
+        clearable
+        class="search-input"
+        @keyup.enter="handleResourceSearch"
+      >
+        <template #append>
+          <el-button @click="handleResourceSearch"><el-icon><Search /></el-icon></el-button>
+        </template>
+      </el-input>
+    </div>
+    
+    <el-table
+      v-loading="loading.resources"
+      :data="resourceLibrary"
+      stripe
+      style="width: 100%; margin-top: 15px;"
+      height="400px"
+      highlight-current-row
+      @current-change="handleResourceSelectionChange"
+      :row-key="(row) => row.resourceId"
+    >
+      <el-table-column type="index" width="50" label="序号" />
+      <el-table-column prop="name" label="资源名称" />
+      <el-table-column prop="type" label="类型" width="120" />
+      <el-table-column prop="difficulty" label="难度" width="120" />
+      <el-table-column prop="uploadTime" label="上传时间" width="180" />
+    </el-table>
+    
+    <el-pagination
+      v-if="resourcePagination.total > 0"
+      style="margin-top: 20px; justify-content: flex-end;"
+      layout="total, sizes, prev, pager, next, jumper"
+      :total="resourcePagination.total"
+      :current-page="resourcePagination.page"
+      :page-size="resourcePagination.pageSize"
+      :page-sizes="[10, 20, 50]"
+      @current-change="handleResourcePageChange"
+      @size-change="handleResourceSizeChange"
+    />
+    
+    <template #footer>
+      <span class="dialog-footer">
+        <el-button @click="showResourceLibrary = false">取消</el-button>
+        <el-button 
+          type="primary" 
+          @click="confirmResourceSelection"
+          :disabled="!tempSelectedResource"
+        >
+          确认选择
+        </el-button>
+      </span>
+    </template>
+  </el-dialog>
+</template>
+
+<script setup>
+import { ref, reactive, onMounted } from 'vue';
+import { Search, Files } from '@element-plus/icons-vue';
+import { ElMessage } from 'element-plus';
+import { doGet, doPost } from '../../http/httpRequest.js';
+import { getUser } from '../../utils/auth.js';
+import dayjs from "dayjs";
+
+const emit = defineEmits(['form-submit', 'form-cancel']);
+
+const props = defineProps({
+  initialData: {
+    type: Object,
+    default: null
+  }
+});
+
+const formRef = ref(null);
+
+const form = ref({
+  title: '',
+  description: '',
+  deadline: '',
+  totalScore: 100,
+  classIds: [],
+  resourceId: null,
+});
+
+const rules = ref({
+  title: [{ required: true, message: '请输入作业标题', trigger: 'blur' }],
+  classIds: [{ required: true, message: '请至少选择一个班级', trigger: 'change', type: 'array' }],
+  deadline: [{ required: true, message: '请选择截止日期', trigger: 'change' }],
+  totalScore: [{ required: true, message: '请输入作业总分', trigger: 'blur' }],
+  resourceId: [{ required: true, message: '请从资源库选择一个附件', trigger: 'change' }],
+});
+
+const classes = ref([]);
+let oldSelectedClasses = [];
+
+const loading = ref({
+  classes: false,
+  resources: false,
+  submitting: false,
+});
+
+// --- 资源库相关 ---
+const showResourceLibrary = ref(false);
+const resourceLibrary = ref([]);
+const selectedResource = ref(null);
+const tempSelectedResource = ref(null);
+
+const resourceFilter = reactive({
+  keyword: '',
+  type: '',
+  difficulty: '',
+  permission: '',
+  sortBy: 'uploadTime',
+  sortDir: 'desc',
+});
+
+const resourcePagination = reactive({
+  page: 1,
+  pageSize: 10,
+  total: 0,
+});
+
+const openResourceLibrary = () => {
+  showResourceLibrary.value = true;
+  fetchResources();
+};
+
+const fetchResources = async () => {
+  loading.value.resources = true;
+  const userInfo = getUser();
+  if (!userInfo || !userInfo.userId) {
+    ElMessage.error("无法获取教师信息，请重新登录");
+    loading.value.resources = false;
+    return;
+  }
   
-  const rules = {
-    name: [{ required: true, message: '请输入作业名称', trigger: 'blur' }],
-    course: [{ required: true, message: '请选择所属课程', trigger: 'change' }],
-    class: [{ required: true, message: '请选择所属班级', trigger: 'change' }],
-    dates: [{ required: true, message: '请选择起止日期', trigger: 'change' }],
+  const params = {
+    page: resourcePagination.page,
+    pageSize: resourcePagination.pageSize,
+    ...resourceFilter
   };
-  
-  // 暴露 submit 方法，供父组件调用
-  const submit = () => {
-    return new Promise((resolve, reject) => {
-      formRef.value.validate((valid) => {
-        if (valid) {
-          // 添加资源信息到提交数据中
-          const submitData = { ...form.value };
-          if (submitData.selectedResource) {
-            submitData.resourceInfo = {
-              id: submitData.selectedResource.id,
-              name: submitData.selectedResource.name,
-              type: submitData.selectedResource.type
-            };
+
+  try {
+    const response = await doGet(`/api/service/resource/list/${userInfo.userId}`, params);
+    if (response.data.code === 200) {
+      resourceLibrary.value = response.data.data.records.map(r => ({
+          ...r,
+          uploadTime: dayjs(r.uploadTime).format('YYYY-MM-DD HH:mm:ss')
+      }));
+      resourcePagination.total = response.data.data.total;
+    } else {
+      ElMessage.error("获取资源列表失败");
+    }
+  } catch (error) {
+    console.error("获取资源列表失败:", error);
+    ElMessage.error("获取资源列表失败");
+  } finally {
+    loading.value.resources = false;
+  }
+};
+
+const handleResourceSearch = () => {
+  resourcePagination.page = 1;
+  fetchResources();
+};
+
+const handleResourcePageChange = (newPage) => {
+  resourcePagination.page = newPage;
+  fetchResources();
+};
+
+const handleResourceSizeChange = (newSize) => {
+  resourcePagination.pageSize = newSize;
+  resourcePagination.page = 1;
+  fetchResources();
+};
+
+const handleResourceSelectionChange = (currentRow) => {
+  tempSelectedResource.value = currentRow;
+};
+
+const confirmResourceSelection = () => {
+  if (tempSelectedResource.value) {
+    selectedResource.value = tempSelectedResource.value;
+    form.value.resourceId = selectedResource.value.resourceId;
+    showResourceLibrary.value = false;
+  } else {
+    ElMessage.warning("请先选择一个资源");
+  }
+};
+
+const handleRemoveResource = () => {
+  selectedResource.value = null;
+  form.value.resourceId = null;
+};
+// --- 资源库相关结束 ---
+
+
+const fetchClasses = async () => {
+  loading.value.classes = true;
+  try {
+    const userInfo = getUser();
+    if (!userInfo || !userInfo.userId) {
+      ElMessage.error('无法获取教师信息，请重新登录后再试');
+      throw new Error('获取教师ID失败');
+    }
+    const teacherId = userInfo.userId;
+    const coursesResponse = await doGet(`/api/service/courses/teacher/${teacherId}`);
+    
+    if (coursesResponse.data.code !== 200 || !coursesResponse.data.data) {
+      classes.value = [];
+      return;
+    }
+
+    const courses = coursesResponse.data.data;
+    if (courses.length === 0) {
+      classes.value = [];
+      return;
+    }
+
+    const classRequests = courses
+      .filter(course => course && typeof course.course_id === 'number')
+      .map(course => doGet(`/api/service/classes/course/${course.course_id}`));
+    
+    if (classRequests.length === 0) {
+      classes.value = [];
+      return;
+    }
+
+    const classResponses = await Promise.all(classRequests);
+    
+    const allClassMap = new Map();
+    classResponses.forEach(response => {
+      const classArray = response.data; 
+      if (Array.isArray(classArray)) {
+        classArray.forEach(cls => {
+          if (!allClassMap.has(cls.classId)) {
+            allClassMap.set(cls.classId, cls);
           }
-          resolve(submitData);
-        } else {
-          reject('表单验证失败');
-        }
-      });
+        });
+      }
     });
-  };
+    classes.value = Array.from(allClassMap.values());
+  } catch (error) {
+    console.error('获取班级列表失败:', error);
+    ElMessage.error(`获取班级列表失败: ${error.message}`);
+    classes.value = [];
+  } finally {
+    loading.value.classes = false;
+  }
+};
+
+
+const handleClassChange = (selected) => {
+  const allClassIds = classes.value.map(c => c.classId);
+  if (selected.includes('all')) {
+    form.value.classIds = allClassIds;
+    oldSelectedClasses = allClassIds;
+  } else if (oldSelectedClasses.includes('all') && selected.length < allClassIds.length) {
+    form.value.classIds = [];
+    oldSelectedClasses = [];
+  } else {
+    oldSelectedClasses = selected;
+  }
+};
+
+const submitForm = async () => {
+  if (!formRef.value) return;
   
-  defineExpose({
-    submit
+  await formRef.value.validate(async (valid) => {
+    if (valid) {
+      loading.value.submitting = true;
+      
+      const payload = {
+        title: form.value.title,
+        description: form.value.description,
+        deadline: form.value.deadline,
+        totalScore: form.value.totalScore,
+        classIds: form.value.classIds,
+        resourceId: form.value.resourceId,
+      };
+
+      try {
+        const response = await doPost('/api/service/assignment', payload);
+        if (response.data) {
+            ElMessage.success('作业创建成功！');
+            emit('form-submit', response.data);
+        } else {
+            ElMessage.error('创建作业失败，未收到确认ID');
+        }
+      } catch (error) {
+        console.error('创建作业失败:', error);
+        ElMessage.error(`创建作业失败: ${error.message || '未知错误'}`);
+      } finally {
+        loading.value.submitting = false;
+      }
+    } else {
+      ElMessage.error('请检查表单项是否填写完整');
+    }
   });
-  </script>
-  
-  <style scoped>
-  .attachment-options {
-    display: flex;
-    align-items: flex-start;
-    gap: 15px;
+};
+
+const handleCancel = () => {
+  emit('form-cancel');
+};
+
+onMounted(() => {
+  fetchClasses();
+  if (props.initialData) {
+    Object.assign(form.value, props.initialData);
   }
-  
-  .upload-option {
-    min-width: 200px;
-  }
-  
-  .or-divider {
-    color: #909399;
-    font-size: 14px;
-    margin-top: 10px;
-  }
-  
-  .resource-option {
-    min-width: 200px;
-    display: flex;
-    flex-direction: column;
-    margin-top: 0;
-  }
-  
-  .selected-resource {
-    margin-top: 8px;
-    font-size: 14px;
-    color: #409EFF;
-  }
-  
-  .resource-search {
-    margin-bottom: 15px;
-  }
-  
-  .resource-search-input {
-    width: 100%;
-  }
-  </style>
+});
+
+defineExpose({
+  submitForm
+});
+</script>
+
+<style scoped>
+.selected-resource {
+  margin-left: 10px;
+}
+.resource-toolbar {
+  margin-bottom: 15px;
+}
+.search-input {
+  width: 300px;
+}
+</style>
   

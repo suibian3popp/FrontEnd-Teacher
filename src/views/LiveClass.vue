@@ -42,6 +42,21 @@
 import { ConferenceMainView } from '@tencentcloud/roomkit-web-vue3';
 import { conference } from '@tencentcloud/roomkit-web-vue3';
 import { ref, onMounted, onUnmounted, nextTick } from 'vue';
+import { useRoute } from 'vue-router'
+
+const route = useRoute()
+
+// 获取路由参数
+// const courseId = route.query.courseId // 课程ID
+// const liveTitle = route.query.liveTitle // 直播标题
+// 获取直播会话ID
+
+// const sessionId = route.query.sessionId;
+// // 获取TRTC参数（解析字符串为对象）
+//
+// //反序列化为对象
+// const trtcParams = JSON.parse(route.query.trtcParams);
+
 
 // 状态管理
 let isRecording = ref(false);
@@ -51,29 +66,39 @@ let recordedChunks = ref([]);
 let screenStream = ref(null);
 
 // 腾讯云配置,实际调用后端接口
-const config = {
-  sdkAppId: 1600,
-  userId: '',
-  userSig: '',
-  roomId: '12345'
-};
+// const config = {
+//   sdkAppId:  1600095403,
+//   userId: 'teacher_1',
+//   userSig: 'eJyrVgrxCdZLrSjILEpVsrIwMzEw0AELlaUWKVkpGekZKEH4xSnZiQUFmSlKVoZmBgYGlqYmBsYQmcyU1LySzLRMsIaS1MTkjNSieEOYtsx0oGhBTlh6hGdJuHtghUVBfoWfQYiTt4ePYWZ5kH*kZ05eWW6pu0eWfqqPi0GyLVRjSWYu0EGG5qaGlmbGJubmtQDEzzKw',
+//   roomId: '12345'
+// };
+// console.log('会议配置:', config);
+// console.log('userId:', config.userId);
 
 // 启动会议
 const startConference = async () => {
   try {
+    const options ={
+       sdkAppId:  1600095403,
+       userId: 'teacher_1',
+       userSig: 'eJyrVgrxCdZLrSjILEpVsrIwMzEw0AELlaUWKVkpGekZKEH4xSnZiQUFmSlKVoZmBgYGlqYmBsYQmcyU1LySzLRMsIaS1MTkjNSieEOYtsx0oGhBTlh6hGdJuHtghUVBfoWfQYiTt4ePYWZ5kH*kZ05eWW6pu0eWfqqPi0GyLVRjSWYu0EGG5qaGlmbGJubmtQDEzzKw',
+  
+    }
     await conference.login({
-      sdkAppId: config.sdkAppId,
-      userId: config.userId,
-      userSig: config.userSig
+      sdkAppId: options.sdkAppId,
+      userId: options.userId,
+      userSig:options.userSig
+      // sdkAppId: trtcParams.sdkAppId,
+      // userId: trtcParams.userId,
+      // userSig: trtcParams.userSig
     });
-
-    await conference.start(config.roomId, {
+    //这里房间后也要换位trtcParams.roomId
+    await conference.start('12345', {
       roomName: 'TestRoom',
       isSeatEnabled: false,
       isOpenCamera: false,
       isOpenMicrophone: false,
     });
-
     await nextTick();
     console.log('会议启动成功');
   } catch (error) {

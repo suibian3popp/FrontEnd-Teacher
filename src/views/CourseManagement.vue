@@ -364,6 +364,11 @@ import CourseDetail from '../components/CourseDetail.vue';
 import { getTeacherCourses, createCourse as apiCreateCourse, deleteCourse as apiDeleteCourse, getCourseChapters, addChapter, deleteChapter, updateChapter } from '@/api/course.js';
 import { getAssistants as apiGetAssistants } from '@/api/assistant.js';
 import { getDepartments as apiGetDepartments } from '@/api/department';
+import axios from 'axios';
+import { useRouter } from 'vue-router';
+import { checkAuthStatus } from '@/utils/auth';
+//获取路由实例
+const router = useRouter()
 
 // 视图模式状态，默认为网格模式
 const viewMode = ref('grid');
@@ -422,8 +427,10 @@ const courses = ref([]);
 const fetchCourses = async () => {
   loading.value = true;
   try {
-    const response = await getTeacherCourses(13); // teacherId 13
-    console.log(response.data);
+    console.log('获取课程列表');
+    const response = await getTeacherCourses(16); 
+    
+    console.log('获取课程响应:', response.data);
 
     // 首先检查业务响应码是否成功
     if (response.data && response.data.code === 200) {
@@ -461,6 +468,15 @@ const fetchCourses = async () => {
 
 // 组件挂载时自动获取数据
 onMounted(() => {
+  // 检查认证状态
+  console.log('组件挂载，检查认证状态:');
+  const authStatus = checkAuthStatus();
+  if (!authStatus.token) {
+    ElMessage.error('未检测到有效登录状态，请重新登录');
+    router.push('/login');
+    return;
+  }
+  
   fetchCourses();
   fetchAssistants();
   fetchDepartments();
@@ -509,7 +525,7 @@ const createCourse = async () => {
   try {
     const courseData = {
       ...newCourse.value,
-      teacher_id: 13, // Hardcode teacher_id to 13 as requested
+      teacher_id: 16, // Updated teacher_id to 16 for consistency
     };
     
     console.log("Submitting new course data to backend:", courseData);
@@ -653,42 +669,170 @@ const uploadVideo = async () => {
   }
 };
 
-// 开始直播
-const startLive = async () => {
+// // 开始直播
+// const startLive = async () => {
+//   if (!liveForm.value.title) {
+//     ElMessage.warning('请输入直播标题');
+//     return;
+//   }
+  
+//   try {
+//     liveLoading.value = true;
+    
+//     // 模拟直播准备过程
+//     await new Promise(resolve => setTimeout(resolve, 1500));
+    
+//     // 在实际应用中，应该使用真实的API调用
+//     // const liveData = {
+//     //   courseId: currentCourse.value.id,
+//     //   title: liveForm.value.title,
+//     //   description: liveForm.value.description
+//     // };
+//     // await axios.post('/api/course/live/start', liveData);
+    
+//     ElMessage.success('直播已开始');
+//     showLiveModal.value = false;
+    
+//     // 更新课程状态
+//     const courseIndex = courses.value.findIndex(c => c.id === currentCourse.value.id);
+//     if (courseIndex !== -1) {
+//       courses.value[courseIndex].status = '进行中';
+//     }
+//   } catch (error) {
+//     console.error('开始直播失败:', error);
+//     ElMessage.error('开始直播失败');
+//   } finally {
+//     liveLoading.value = false;
+//   }
+// };
+//
+// // 修改"开始直播"方法，添加路由跳转
+// const startLive = async () => {
+//   if (!liveForm.value.title) {
+//     ElMessage.warning('请输入直播标题');
+//     return;
+//   }
+//
+//   try {
+//     liveLoading.value = true;
+//
+//     // 模拟直播准备过程
+//     await new Promise(resolve => setTimeout(resolve, 1500));
+//
+//     // 实际项目中：调用开始直播的API接口
+//     // const liveData = { ... };
+//     // await axios.post('/api/course/live/start', liveData);
+//
+//     ElMessage
+//         .success('直播已开始，即将进入直播间');
+//
+//     // 关闭当前对话框
+//     showLiveModal
+//         .value = false;
+//
+//     // 更新课程状态
+//     const courseIndex = courses.value.findIndex(c => c.id === currentCourse.value.id);
+//     if (courseIndex !== -1) {
+//       courses.value[courseIndex].status = '进行中';
+//     }
+//
+//     // 关键：路由跳转到LiveClass.vue，并携带课程ID参数
+//     router.push({
+//           path: '/live-class', // 对应路由配置中的path
+//           query: {
+//             courseId: currentCourse.value.id, // 传递课程ID
+//             liveTitle: liveForm.value.title // 传递直播标题（可选）
+//
+//           }
+//         })
+//
+//   } catch (error) {
+//     console.error('开始直播失败:', error);
+//     ElMessage
+//         .error('开始直播失败');
+//   } finally {
+//     liveLoading
+//         .value = false;
+//   }
+// };
+
+
+
+//开始直播
+const startLive = () => {
   if (!liveForm.value.title) {
     ElMessage.warning('请输入直播标题');
     return;
   }
-  
-  try {
-    liveLoading.value = true;
-    
-    // 模拟直播准备过程
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
-    // 在实际应用中，应该使用真实的API调用
-    // const liveData = {
-    //   courseId: currentCourse.value.id,
-    //   title: liveForm.value.title,
-    //   description: liveForm.value.description
-    // };
-    // await axios.post('/api/course/live/start', liveData);
-    
-    ElMessage.success('直播已开始');
-    showLiveModal.value = false;
-    
-    // 更新课程状态
-    const courseIndex = courses.value.findIndex(c => c.id === currentCourse.value.id);
-    if (courseIndex !== -1) {
-      courses.value[courseIndex].status = '进行中';
-    }
-  } catch (error) {
-    console.error('开始直播失败:', error);
-    ElMessage.error('开始直播失败');
-  } finally {
-    liveLoading.value = false;
-  }
+
+  liveLoading.value = true;
+
+  // 1. 创建直播会话
+  axios.post('/service/live-sessions/create', {
+    sessionTitle: liveForm.value.title,
+    teacherId: 203,
+    maxUsers: 100,
+    courseId: currentCourse.value.id
+  })
+      .then(createResponse => {
+        const liveSession = createResponse.data;
+        if (!liveSession || !liveSession.sessionId) {
+          throw new Error('创建直播会话失败');
+        }
+
+        // 2. 开始直播会话
+        return axios.put(`/service/live-sessions/${liveSession.sessionId}/start`)
+            .then(() => liveSession);
+      })
+      .then(liveSession => {
+        // 3. 获取TRTC参数
+        return axios.get(`/service/live-sessions/${liveSession.sessionId}/trtc-params`, {
+          params: {
+            userId: 203,
+            role: 'teacher'
+          }
+        })
+            .then(trtcResponse => ({
+              liveSession,
+              trtcParams: trtcResponse.data
+            }));
+      })
+      .then(({ liveSession, trtcParams }) => {
+        ElMessage.success('直播已准备就绪，即将进入直播教室');
+
+        // 4. 关闭直播准备对话框
+        showLiveModal.value = false;
+
+        // 5. 更新课程状态
+        const courseIndex = courses.value.findIndex(c => c.id === currentCourse.value.id);
+        if (courseIndex !== -1) {
+          courses.value[courseIndex].status = '直播中';
+        }
+
+        // 6. 路由跳转
+        router.push({
+          path: '/live-class',
+          query: {
+            sessionId: liveSession.id,
+            trtcParams: JSON.stringify(trtcParams)
+          }
+        });
+      })
+      .catch(error => {
+        console.error('开始直播失败:', error);
+        ElMessage.error(
+            error.response?.data?.message || '开始直播失败，请稍后重试'
+        );
+
+        // 确保在错误情况下也重置加载状态
+        liveLoading.value = false;
+      })
+      .then(() => {
+        // 无论成功还是失败都会执行的清理逻辑
+        liveLoading.value = false;
+      });
 };
+
 
 // 打开课程详情对话框
 const openCourseDetail = (course) => {
